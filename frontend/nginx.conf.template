@@ -1,0 +1,83 @@
+# Обрабатывается встроенным envsubst-механизмом образа nginx (файлы в
+# /etc/nginx/templates/*.template -> /etc/nginx/conf.d/*.conf при старте
+# контейнера). ${DOMAIN} подставляется из переменной окружения контейнера.
+# Остальные $-переменные в файле (host, scheme, remote_addr...) — это
+# внутренние переменные самого nginx, а не shell/env — envsubst их не
+# трогает, если только в контейнере случайно нет одноимённой env-переменной.
+
+server {
+    listen 80;
+    server_name _;
+
+    # Нужно ДО получения сертификата (certbot ходит сюда по HTTP) и
+    # остаётся нужным для последующих продлений.
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+
+    # Современный TLS-профиль (аналог Mozilla "Intermediate") зашит прямо
+    # тут, а не скачивается отдельным файлом с GitHub при каждом деплое —
+    # меньше на что ломаться. dhparam не нужен: ECDHE-кривые сами дают
+    # forward secrecy без classic DH-файла.
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    # API, admin, статика/медиа и WS — на бэкенд, один origin с фронтом
+    # (в проде это снимает необходимость в CORS вообще).
+    location /api/ {
+        proxy_pass http://backend:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /admin/ {
+        proxy_pass http://backend:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /static/ {
+        proxy_pass http://backend:8000;
+    }
+
+    location /media/ {
+        proxy_pass http://backend:8000;
+    }
+
+    location /ws/ {
+        proxy_pass http://backend:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 3600s;
+    }
+
+    # SPA: неизвестные пути отдаём в index.html, роутинг — на React Router
+    location / {
+        try_files $uri /index.html;
+    }
+}

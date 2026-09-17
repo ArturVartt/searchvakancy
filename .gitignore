@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Django
+backend/staticfiles/
+backend/media/
+db.sqlite3
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+!.env.prod.example
+
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Editors
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log
+
+# TLS-сертификаты Let's Encrypt (приватные ключи!) — генерирует init-letsencrypt.sh
+certbot/
+
+.env.example
+.env.prod.example
