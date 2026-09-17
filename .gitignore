@@ -34,6 +34,3 @@ Thumbs.db
 
 # TLS-сертификаты Let's Encrypt (приватные ключи!) — генерирует init-letsencrypt.sh
 certbot/
-
-.env.example
-.env.prod.example
