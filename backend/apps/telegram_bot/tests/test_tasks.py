@@ -77,6 +77,35 @@ def test_notify_users_for_jobs_ignores_disabled_and_unsubscribed_users():
 
 
 @pytest.mark.django_db
+def test_notify_users_for_jobs_sends_one_combined_message_for_multiple_jobs():
+    """Регрессия: раньше слался один Telegram-вызов на вакансию — 3 новых
+    вакансии за один тик превращались в 3 сообщения подряд. Теперь один
+    пользователь за один вызов notify_users_for_jobs должен получить ОДНО
+    сообщение со всеми подходящими вакансиями."""
+    source = JobSource.objects.create(name="HH.ru", url="https://hh.ru")
+    job1 = _make_job(source, external_id="1", title="Frontend Dev A")
+    job2 = _make_job(source, external_id="2", title="Frontend Dev B")
+    job3 = _make_job(source, external_id="3", title="Frontend Dev C")
+
+    user = Customer.objects.create(
+        username="tg_5", telegram_chat_id="5", telegram_notifications_enabled=True
+    )
+    UserJobFilter.objects.create(user=user)
+
+    with patch("apps.telegram_bot.tasks.send_message", return_value=True) as mocked_send:
+        result = notify_users_for_jobs([job1.id, job2.id, job3.id])
+
+    assert result == {"notified": 3}
+    mocked_send.assert_called_once()
+    sent_text = mocked_send.call_args.args[1]
+    assert job1.title in sent_text
+    assert job2.title in sent_text
+    assert job3.title in sent_text
+
+    assert JobNotification.objects.filter(user=user, sent_to_telegram=True).count() == 3
+
+
+@pytest.mark.django_db
 def test_notify_users_for_jobs_is_idempotent_per_user_job_pair():
     source = JobSource.objects.create(name="HH.ru", url="https://hh.ru")
     job = _make_job(source)
