@@ -35,24 +35,43 @@ class NullsLastOrderingFilter(OrderingFilter):
 class JobFilterSet(django_filters.FilterSet):
     """
     ?min_salary=150000&max_salary=300000&location=Москва
-    &experience_level=junior,middle&job_type=full_time&source=1
+    &experience_level=junior,middle&job_type=full_time&source=1,3
 
     Семантика min/max_salary специально зеркалит UserJobFilter.matches(),
     чтобы результаты API и уведомления в Telegram по одному и тому же
     фильтру не расходились.
+
+    experience_level/job_type/employment_type/source — через запятую в
+    одном параметре (см. frontend/src/lib/api.ts:buildQuery), а не
+    повторяющимся параметром (?x=a&x=b), как ждёт обычный
+    MultipleChoiceFilter/ModelMultipleChoiceFilter из коробки. Пробовал
+    django_filters.BaseCSVFilter-миксин — с MultipleChoiceFilter он ведёт
+    себя не так, как задокументировано (форма валится с "Введите список
+    значений" даже при вроде бы правильном CSV-виджете), поэтому здесь —
+    свои простые method-фильтры, без сюрпризов. Реальный баг был пойман
+    22.09.2026 при добавлении фильтра по источнику: без этого чекбоксы
+    опыта/типа занятости на фронте работали только при выборе ОДНОГО
+    варианта — второй и далее ломали запрос 400-й ошибкой.
     """
 
     min_salary = django_filters.NumberFilter(method="filter_min_salary")
     max_salary = django_filters.NumberFilter(method="filter_max_salary")
     location = django_filters.CharFilter(field_name="location", lookup_expr="icontains")
-    experience_level = django_filters.MultipleChoiceFilter(choices=Job.ExperienceLevel.choices)
-    job_type = django_filters.MultipleChoiceFilter(choices=Job.JobType.choices)
-    employment_type = django_filters.MultipleChoiceFilter(choices=Job.EmploymentType.choices)
+    experience_level = django_filters.CharFilter(method="filter_csv_in")
+    job_type = django_filters.CharFilter(method="filter_csv_in")
+    employment_type = django_filters.CharFilter(method="filter_csv_in")
+    source = django_filters.CharFilter(method="filter_csv_in")
     posted_after = django_filters.DateFilter(field_name="posted_at", lookup_expr="gte")
 
     class Meta:
         model = Job
-        fields = ["source", "experience_level", "job_type", "employment_type", "location"]
+        fields = ["location"]
+
+    def filter_csv_in(self, queryset, name, value: str):
+        values = [v.strip() for v in value.split(",") if v.strip()]
+        if not values:
+            return queryset
+        return queryset.filter(**{f"{name}__in": values})
 
     def filter_min_salary(self, queryset, name, value):
         return queryset.annotate(

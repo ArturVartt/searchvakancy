@@ -4,6 +4,7 @@ import { EMPLOYMENT_LABELS, EXPERIENCE_LABELS, formatDate, formatSalary } from "
 import { useAuth } from "../lib/AuthContext";
 import { api } from "../lib/api";
 import { isJobViewed, isPostedWithinLastDay, markJobViewed } from "../lib/viewedJobs";
+import { sourceBadge } from "../lib/countryBadge";
 
 interface JobCardProps {
   job: Job;
@@ -16,6 +17,7 @@ export function JobCard({ job, onFavoriteChange, highlight }: JobCardProps) {
   const [pending, setPending] = useState(false);
   const [viewed, setViewed] = useState(() => isJobViewed(job.id));
   const isUnseenAndNew = !viewed && isPostedWithinLastDay(job.posted_at);
+  const badge = sourceBadge(job.source);
 
   function handleOpen() {
     markJobViewed(job.id);
@@ -86,7 +88,15 @@ export function JobCard({ job, onFavoriteChange, highlight }: JobCardProps) {
       )}
 
       <div className="mt-3 flex items-center justify-between text-xs text-[var(--color-text-muted)]">
-        <span>{job.source}{job.posted_at ? ` · ${formatDate(job.posted_at)}` : ""}</span>
+        <span className="inline-flex items-center gap-1.5">
+          {badge && (
+            <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${badge.className}`}>
+              {badge.label}
+            </span>
+          )}
+          {job.source}
+          {job.posted_at ? ` · ${formatDate(job.posted_at)}` : ""}
+        </span>
         <a
           href={job.url}
           target="_blank"

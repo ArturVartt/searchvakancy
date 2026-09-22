@@ -20,7 +20,15 @@ from .serializers import (
 
 
 class JobSourceViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = JobSource.objects.all()
+    """
+    Только активные источники — этот список фронтенд использует для
+    чекбоксов фильтра "Источник" (см. JobFilters.tsx), показывать там
+    источник, который никогда не даёт вакансий (например, нереализованный
+    VK Jobs — см. README), было бы просто шумом. Полная сводка по всем
+    источникам, включая неактивные, — отдельно в /api/jobs/stats/.
+    """
+
+    queryset = JobSource.objects.filter(is_active=True)
     serializer_class = JobSourceSerializer
 
 

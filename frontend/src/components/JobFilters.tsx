@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
-import type { EmploymentType, ExperienceLevel, JobFiltersQuery, JobType } from "../types";
+import type { EmploymentType, ExperienceLevel, JobFiltersQuery, JobSource, JobType } from "../types";
 import { EMPLOYMENT_LABELS, EXPERIENCE_LABELS } from "../lib/format";
+import { sourceBadge } from "../lib/countryBadge";
 
 const JOB_TYPE_LABELS: Record<JobType, string> = {
   full_time: "Постоянная",
@@ -16,6 +17,7 @@ const JOB_TYPE_OPTIONS = Object.keys(JOB_TYPE_LABELS) as JobType[];
 interface JobFiltersProps {
   value: JobFiltersQuery;
   onApply: (next: JobFiltersQuery) => void;
+  sources: JobSource[];
 }
 
 function toggle<T>(list: T[] | undefined, item: T): T[] {
@@ -23,7 +25,7 @@ function toggle<T>(list: T[] | undefined, item: T): T[] {
   return current.includes(item) ? current.filter((x) => x !== item) : [...current, item];
 }
 
-export function JobFilters({ value, onApply }: JobFiltersProps) {
+export function JobFilters({ value, onApply, sources }: JobFiltersProps) {
   const [draft, setDraft] = useState<JobFiltersQuery>(value);
 
   function handleSubmit(e: FormEvent) {
@@ -143,6 +145,36 @@ export function JobFilters({ value, onApply }: JobFiltersProps) {
           ))}
         </div>
       </fieldset>
+
+      {sources.length > 0 && (
+        <fieldset>
+          <legend className="mb-1 text-xs font-medium text-[var(--color-text-muted)]">Источник</legend>
+          <div className="flex flex-wrap gap-2">
+            {sources.map((src) => {
+              const badge = sourceBadge(src.name);
+              return (
+                <label
+                  key={src.id}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--color-border)] px-2.5 py-1 text-xs has-checked:border-[var(--color-accent)] has-checked:text-[var(--color-accent)]"
+                >
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={draft.source?.includes(src.id) ?? false}
+                    onChange={() => setDraft({ ...draft, source: toggle(draft.source, src.id) })}
+                  />
+                  {badge && (
+                    <span className={`rounded px-1 py-0.5 text-[10px] font-semibold ${badge.className}`}>
+                      {badge.label}
+                    </span>
+                  )}
+                  {src.name}
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+      )}
 
       <div className="flex gap-2">
         <button

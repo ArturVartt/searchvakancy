@@ -3,7 +3,7 @@ import { JobFilters } from "../components/JobFilters";
 import { JobList } from "../components/JobList";
 import { api, ApiError } from "../lib/api";
 import { useJobUpdates } from "../lib/useJobUpdates";
-import type { Job, JobFiltersQuery, Paginated } from "../types";
+import type { Job, JobFiltersQuery, JobSource, Paginated } from "../types";
 
 const PAGE_SIZE = 20;
 
@@ -13,6 +13,14 @@ export function JobsPage() {
   const [error, setError] = useState<string | null>(null);
   const [newCount, setNewCount] = useState(0);
   const [highlightIds, setHighlightIds] = useState<Set<number>>(new Set());
+  const [sources, setSources] = useState<JobSource[]>([]);
+
+  useEffect(() => {
+    api
+      .listSources()
+      .then((res) => setSources(res.results))
+      .catch(() => setSources([]));
+  }, []);
 
   const load = useCallback((query: JobFiltersQuery) => {
     setData(null);
@@ -64,7 +72,7 @@ export function JobsPage() {
   return (
     <div className="grid gap-6 md:grid-cols-[280px_1fr]">
       <aside>
-        <JobFilters value={filters} onApply={setFilters} />
+        <JobFilters value={filters} onApply={setFilters} sources={sources} />
       </aside>
 
       <section>

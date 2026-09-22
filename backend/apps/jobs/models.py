@@ -27,6 +27,7 @@ class Job(models.Model):
         RUB = "RUB", "₽ RUB"
         USD = "USD", "$ USD"
         EUR = "EUR", "€ EUR"
+        UZS = "UZS", "so'm UZS"
 
     class JobType(models.TextChoices):
         FULL_TIME = "full_time", "Постоянная"

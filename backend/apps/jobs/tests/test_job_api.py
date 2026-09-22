@@ -1,7 +1,7 @@
 import pytest
 from django.utils import timezone
 
-from apps.jobs.models import Job
+from apps.jobs.models import Job, JobSource
 
 
 def _make_job(source, **kwargs):
@@ -48,6 +48,50 @@ def test_explicit_ordering_param_also_puts_null_posted_at_last(api_client, sourc
     ids = [row["id"] for row in response.data["results"]]
     ordered_external_ids = [Job.objects.get(id=i).external_id for i in ids]
     assert ordered_external_ids == ["fresh", "old", "no-date"]
+
+
+@pytest.mark.django_db
+def test_comma_separated_experience_level_matches_any_of_the_values(api_client, source):
+    """
+    Регрессия: обычный django_filters.MultipleChoiceFilter ждёт
+    повторяющийся параметр (?x=a&x=b), а фронтенд шлёт одно значение
+    через запятую (?x=a,b) — без ручного CSV-парсинга это падало 400
+    "a,b нет среди допустимых значений" при выборе 2+ чекбоксов сразу.
+    """
+    junior = _make_job(source, external_id="j", experience_level=Job.ExperienceLevel.JUNIOR)
+    middle = _make_job(source, external_id="m", experience_level=Job.ExperienceLevel.MIDDLE)
+    _make_job(source, external_id="s", experience_level=Job.ExperienceLevel.SENIOR)
+
+    response = api_client.get("/api/jobs/", {"experience_level": "junior,middle"})
+    assert response.status_code == 200
+    ids = {row["id"] for row in response.data["results"]}
+    assert ids == {junior.id, middle.id}
+
+
+@pytest.mark.django_db
+def test_sources_endpoint_excludes_inactive(api_client, source):
+    """VK Jobs (и любой другой нереализованный/мёртвый источник) не должен
+    засорять чекбоксы фильтра "Источник" на фронте — см. JobSourceViewSet."""
+    JobSource.objects.create(name="VK Jobs", url="https://vk.com/jobs", is_active=False)
+
+    response = api_client.get("/api/jobs/sources/")
+    names = {row["name"] for row in response.data["results"]}
+    assert names == {"HH.ru"}
+    assert "VK Jobs" not in names
+
+
+@pytest.mark.django_db
+def test_comma_separated_source_filter(api_client, source):
+    other_source = JobSource.objects.create(name="IT-Jobs.uz", url="https://it-jobs.uz")
+    job_a = _make_job(source, external_id="a")
+    job_b = _make_job(other_source, external_id="b")
+    third_source = JobSource.objects.create(name="Habr Career", url="https://career.habr.com")
+    _make_job(third_source, external_id="c")
+
+    response = api_client.get("/api/jobs/", {"source": f"{source.id},{other_source.id}"})
+    assert response.status_code == 200
+    ids = {row["id"] for row in response.data["results"]}
+    assert ids == {job_a.id, job_b.id}
 
 
 @pytest.mark.django_db

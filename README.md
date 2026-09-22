@@ -10,13 +10,15 @@
 - ✅ **Phase 1** — Django-проект, модели БД (`Job`, `JobSource`, `UserJobFilter`,
   `JobNotification`), Celery + Redis, Django Channels (WebSocket `/ws/jobs/`),
   Docker Compose, базовый read-only REST API.
-- 🟡 **Phase 2** — четыре источника: HH.ru (`hh_scraper.py`, официальный API —
+- 🟡 **Phase 2** — пять источников: HH.ru (`hh_scraper.py`, официальный API —
   **закрыт HH с апреля 2026**, см. ниже), Habr Career (`habr_scraper.py`,
   HTML career.habr.com/vacancies — публичного API нет), SuperJob
-  (`superjob_scraper.py`, официальный API, нужен бесплатный App ID) и
+  (`superjob_scraper.py`, официальный API, нужен бесплатный App ID),
   Zarplata.ru (`zarplata_scraper.py`, HTML — та же платформа/база, что у
-  HH.ru, см. нюанс ниже). `BaseScraper` — общий контракт, `run_all_scrapers`
-  по расписанию каждые 30 мин через Celery Beat.
+  HH.ru, см. нюанс ниже) и IT-Jobs.uz (`itjobsuz_scraper.py`, вакансии по
+  Узбекистану — HTML с inline JSON, публичного API нет). `BaseScraper` —
+  общий контракт, `run_all_scrapers` по расписанию каждые 30 мин через
+  Celery Beat.
   **VK Jobs не реализован** — `vk.com/jobs` оказался не общей биржей
   вакансий, а собственной карьерной страницей ВКонтакте (SPA на их
   внутреннем `jobs.vacancies` API с анонимным токеном) — см. README ниже.
@@ -93,7 +95,8 @@ frontend/
 │   ├── pages/       — JobsPage, FavoritesPage, NotificationsPage, LoginPage
 │   ├── components/  — Layout, JobCard, JobList, JobFilters, RequireAuth
 │   ├── lib/         — api.ts (fetch-клиент), useJobUpdates.ts (WebSocket-хук),
-│   │                  AuthContext.tsx, theme.ts, format.ts
+│   │                  AuthContext.tsx, theme.ts, format.ts, viewedJobs.ts,
+│   │                  countryBadge.ts (бейдж "UZ" для IT-Jobs.uz — см. ниже)
 │   └── types.ts     — TS-типы, зеркалящие сериализаторы backend
 └── vite.config.ts
 ```
@@ -105,6 +108,22 @@ frontend/
 Валидация пароля при регистрации — стандартная Django `validate_password`
 (минимум 8 символов, не слишком простой и т.п.), своей формы валидации
 сверх этого нет.
+
+### Вакансии из Узбекистана (IT-Jobs.uz) — UI
+
+- Карточка вакансии и чекбокс в фильтре "Источник" показывают голубой
+  бейдж **"UZ"** рядом с названием источника (`sourceBadge()` в
+  `lib/countryBadge.ts`) — чтобы не путать с рублёвым рынком, когда
+  вакансии смешаны в общем списке.
+- Сознательно **текстовый бейдж, а не флаг-эмодзи** 🇺🇿: на Windows
+  (шрифт Segoe UI Emoji) флаги стран исторически не рендерятся картинкой —
+  показываются как два обычных символа кода страны ("uz"), выглядит как
+  опечатка, а не как бейдж. Проверено вживую скриншотом на этой машине.
+- Валюта UZS (добавлена в `Job.Currency`) — суммы в десятки миллионов
+  (`15 000 000–18 000 000 UZS`), это нормально, не баг форматирования.
+- Фильтр "Источник" (`JobFilters.tsx`) — чекбоксы по всем активным
+  источникам, позволяет полностью скрыть/показать IT-Jobs.uz одним
+  кликом. Список источников подтягивается `GET /api/jobs/sources/`.
 
 ## Локальный запуск без Docker
 
@@ -138,7 +157,7 @@ celery -A config beat -l info
 `CELERY_BEAT_SCHEDULE` в `config/settings/base.py`) Celery Beat запускает
 `apps.jobs.tasks.run_all_scrapers`.
 
-Запустить скрейпер вручную (`hh`, `habr`, `superjob` или `zarplata`):
+Запустить скрейпер вручную (`hh`, `habr`, `superjob`, `zarplata` или `itjobsuz`):
 
 ```bash
 docker compose exec backend python manage.py shell -c "from apps.jobs.tasks import run_scraper; print(run_scraper('habr'))"
@@ -207,6 +226,31 @@ docker compose exec backend python manage.py shell -c "from apps.jobs.tasks impo
 > - Enum опыта (`noExperience`/`between1And3`/`between3And6`/`moreThan6`)
 >   идентичен HH.ru — переиспользуется та же логика маппинга.
 
+> **IT-Jobs.uz** — вакансии по Узбекистану, `robots.txt` открытый
+> (`Allow: /`, запрещены только `/api/` и `/admin/`), публичного API нет.
+> Next.js, но данные не догружаются JS'ом отдельным запросом — сервер сам
+> зашивает их в HTML как inline JSON (React Server Components
+> flight-payload), поэтому обычный GET достаточен, headless-браузер не
+> нужен (в отличие от GetMatch). Валюта — почти всегда **UZS** (узбекский
+> сум, добавлен в `Job.Currency`), суммы поэтому в десятки миллионов —
+> это нормально, не баг форматирования. Нюансы:
+> - JSON внутри HTML ещё раз завёрнут в JS-строку — кавычки экранированы
+>   ОДНИМ обратным слэшем (`\"title\":\"...`). Обычный `json.loads()` не
+>   применим (это не самостоятельный JSON-документ). При переводе рабочих
+>   regex из ручной JS-проверки (node) в Python-raw-строки один слэш
+>   потерялся при написании — `_JOB_BLOCK_SPLIT` не матчился вообще ни
+>   разу, скрейпер молча возвращал 0 вакансий. Поймано тестами до
+>   деплоя. Исправлено через `re.escape()` на обычных (не raw) строках —
+>   там `\\` однозначно значит один backslash, меньше шансов ошибиться
+>   вручную при экранировании.
+> - `?category=frontend` в URL не фильтрует (как и у Habr/SuperJob) — сайт
+>   отдаёт всё одним списком (сейчас ~16 IT-вакансий по всей стране),
+>   фильтруем по `categoryName == "Фронтенд"` + `is_frontend_relevant()`.
+> - Объём небольшой (5-6 фронтенд-вакансий разом) — маленький нишевый
+>   рынок, это ожидаемо, не признак того, что скрейпер что-то недобирает.
+> - `companyName` у части вакансий буквально `"Unknown"` — это реальные
+>   данные сайта (аноним-постинги), не дефолт скрейпера.
+
 > **Postgres NULL + `ORDER BY -posted_at`**: по умолчанию Postgres считает
 > NULL "больше любого значения", поэтому вакансии без даты публикации
 > (Zarplata.ru) оказывались бы выше реально свежих. Исправлено через
@@ -254,8 +298,11 @@ Telegram) — он не связан с веб-аккаунтом, зареги�
 ## REST API (Phase 4)
 
 Публично (без авторизации):
-- `GET /api/jobs/` — список, фильтры `?min_salary=&max_salary=&location=&experience_level=&job_type=&employment_type=&source=&posted_after=`, поиск `?search=`, сортировка `?ordering=-posted_at`
-- `GET /api/jobs/<id>/`, `GET /api/jobs/sources/`, `GET /api/jobs/stats/`
+- `GET /api/jobs/` — список, фильтры `?min_salary=&max_salary=&location=&experience_level=&job_type=&employment_type=&source=&posted_after=`, поиск `?search=`, сортировка `?ordering=-posted_at`.
+  `experience_level`/`job_type`/`employment_type`/`source` — через запятую в одном
+  параметре (`?source=1,3`, не `?source=1&source=3`) — см. `JobFilterSet.filter_csv_in`
+  в `apps/jobs/filters.py`.
+- `GET /api/jobs/<id>/`, `GET /api/jobs/sources/` (только активные — см. `JobSourceViewSet`), `GET /api/jobs/stats/`
 
 Нужен токен (`Authorization: Token <token>`):
 - `POST /api/auth/register/` (`username`, `password`, `email?`) — регистрация, сразу возвращает токен

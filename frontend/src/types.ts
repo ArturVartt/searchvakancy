@@ -1,7 +1,7 @@
 export type ExperienceLevel = "junior" | "middle" | "senior" | "lead";
 export type JobType = "full_time" | "contract" | "freelance" | "internship";
 export type EmploymentType = "full_day" | "part_time" | "remote";
-export type Currency = "RUB" | "USD" | "EUR";
+export type Currency = "RUB" | "USD" | "EUR" | "UZS";
 
 export interface JobSource {
   id: number;
@@ -86,7 +86,7 @@ export interface JobFiltersQuery {
   experience_level?: ExperienceLevel[];
   job_type?: JobType[];
   employment_type?: EmploymentType[];
-  source?: number;
+  source?: number[];
   ordering?: string;
   page?: number;
 }
