@@ -42,14 +42,14 @@ export function JobCard({ job, onFavoriteChange, highlight }: JobCardProps) {
 
   return (
     <article
-      className={`rounded-xl border p-4 transition-colors ${
+      className={`rounded-lg border p-3 transition-colors sm:rounded-xl sm:p-4 ${
         highlight ? "border-[var(--color-accent)]" : "border-[var(--color-border)]"
       } ${isUnseenAndNew ? "ring-2 ring-yellow-400" : ""} bg-[var(--color-surface)]`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="truncate text-base font-semibold text-[var(--color-text)]">{job.title}</h3>
-          <p className="truncate text-sm text-[var(--color-text-muted)]">{job.company}</p>
+          <h3 className="truncate text-sm font-semibold text-[var(--color-text)] sm:text-base">{job.title}</h3>
+          <p className="truncate text-xs text-[var(--color-text-muted)] sm:text-sm">{job.company}</p>
         </div>
         {isAuthenticated && (
           <button
@@ -58,7 +58,7 @@ export function JobCard({ job, onFavoriteChange, highlight }: JobCardProps) {
             disabled={pending}
             aria-label={job.is_favorited ? "Убрать из избранного" : "Добавить в избранное"}
             aria-pressed={job.is_favorited}
-            className="shrink-0 text-xl leading-none disabled:opacity-50"
+            className="shrink-0 text-lg leading-none disabled:opacity-50 sm:text-xl"
           >
             <span className={job.is_favorited ? "text-yellow-400" : "text-[var(--color-text-muted)]"}>
               {job.is_favorited ? "★" : "☆"}
@@ -67,7 +67,7 @@ export function JobCard({ job, onFavoriteChange, highlight }: JobCardProps) {
         )}
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--color-text-muted)]">
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--color-text-muted)] sm:mt-3 sm:gap-x-3 sm:text-sm">
         <span className="font-medium text-[var(--color-text)]">{formatSalary(job)}</span>
         {job.location && <span>📍 {job.location}</span>}
         {job.experience_level && <span>{EXPERIENCE_LABELS[job.experience_level]}</span>}
@@ -75,11 +75,11 @@ export function JobCard({ job, onFavoriteChange, highlight }: JobCardProps) {
       </div>
 
       {job.required_skills.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-2 flex flex-wrap gap-1 sm:mt-3 sm:gap-1.5">
           {job.required_skills.map((skill) => (
             <span
               key={skill}
-              className="rounded-full bg-[var(--color-surface-hover)] px-2 py-0.5 text-xs text-[var(--color-text-muted)]"
+              className="rounded-full bg-[var(--color-surface-hover)] px-1.5 py-0.5 text-[11px] text-[var(--color-text-muted)] sm:px-2 sm:text-xs"
             >
               {skill}
             </span>
@@ -87,7 +87,7 @@ export function JobCard({ job, onFavoriteChange, highlight }: JobCardProps) {
         </div>
       )}
 
-      <div className="mt-3 flex items-center justify-between text-xs text-[var(--color-text-muted)]">
+      <div className="mt-2 flex items-center justify-between text-xs text-[var(--color-text-muted)] sm:mt-3">
         <span className="inline-flex items-center gap-1.5">
           {badge && (
             <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${badge.className}`}>

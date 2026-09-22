@@ -40,7 +40,7 @@ export function JobFilters({ value, onApply, sources }: JobFiltersProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 sm:gap-4 sm:rounded-xl sm:p-4">
       <div>
         <label className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">Ключевые слова</label>
         <input
@@ -92,7 +92,7 @@ export function JobFilters({ value, onApply, sources }: JobFiltersProps) {
           {EXPERIENCE_OPTIONS.map((level) => (
             <label
               key={level}
-              className="flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--color-border)] px-2.5 py-1 text-xs has-checked:border-[var(--color-accent)] has-checked:text-[var(--color-accent)]"
+              className="flex cursor-pointer items-center gap-1 rounded-full border border-[var(--color-border)] px-2 py-0.5 text-[11px] has-checked:border-[var(--color-accent)] has-checked:text-[var(--color-accent)] sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-xs"
             >
               <input
                 type="checkbox"
@@ -112,7 +112,7 @@ export function JobFilters({ value, onApply, sources }: JobFiltersProps) {
           {JOB_TYPE_OPTIONS.map((type) => (
             <label
               key={type}
-              className="flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--color-border)] px-2.5 py-1 text-xs has-checked:border-[var(--color-accent)] has-checked:text-[var(--color-accent)]"
+              className="flex cursor-pointer items-center gap-1 rounded-full border border-[var(--color-border)] px-2 py-0.5 text-[11px] has-checked:border-[var(--color-accent)] has-checked:text-[var(--color-accent)] sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-xs"
             >
               <input
                 type="checkbox"
@@ -132,7 +132,7 @@ export function JobFilters({ value, onApply, sources }: JobFiltersProps) {
           {EMPLOYMENT_OPTIONS.map((type) => (
             <label
               key={type}
-              className="flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--color-border)] px-2.5 py-1 text-xs has-checked:border-[var(--color-accent)] has-checked:text-[var(--color-accent)]"
+              className="flex cursor-pointer items-center gap-1 rounded-full border border-[var(--color-border)] px-2 py-0.5 text-[11px] has-checked:border-[var(--color-accent)] has-checked:text-[var(--color-accent)] sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-xs"
             >
               <input
                 type="checkbox"
@@ -155,7 +155,7 @@ export function JobFilters({ value, onApply, sources }: JobFiltersProps) {
               return (
                 <label
                   key={src.id}
-                  className="flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--color-border)] px-2.5 py-1 text-xs has-checked:border-[var(--color-accent)] has-checked:text-[var(--color-accent)]"
+                  className="flex cursor-pointer items-center gap-1 rounded-full border border-[var(--color-border)] px-2 py-0.5 text-[11px] has-checked:border-[var(--color-accent)] has-checked:text-[var(--color-accent)] sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-xs"
                 >
                   <input
                     type="checkbox"
@@ -179,14 +179,14 @@ export function JobFilters({ value, onApply, sources }: JobFiltersProps) {
       <div className="flex gap-2">
         <button
           type="submit"
-          className="flex-1 rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium text-[var(--color-accent-contrast)] hover:bg-[var(--color-accent-hover)]"
+          className="flex-1 rounded-lg bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-accent-contrast)] hover:bg-[var(--color-accent-hover)] sm:py-2"
         >
           Применить
         </button>
         <button
           type="button"
           onClick={handleReset}
-          className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]"
+          className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-sm text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] sm:py-2"
         >
           Сбросить
         </button>

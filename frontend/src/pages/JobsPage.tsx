@@ -14,6 +14,11 @@ export function JobsPage() {
   const [newCount, setNewCount] = useState(0);
   const [highlightIds, setHighlightIds] = useState<Set<number>>(new Set());
   const [sources, setSources] = useState<JobSource[]>([]);
+  // На телефоне форма фильтров разворачивается на весь экран поверх списка
+  // вакансий — сворачиваем её по умолчанию за кнопкой-тогглом. На md+
+  // (десктоп/планшет) кнопка скрыта (md:hidden), а форма всегда видна
+  // (md:block перекрывает hidden независимо от этого стейта).
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     api
@@ -68,11 +73,34 @@ export function JobsPage() {
 
   const currentPage = filters.page ?? 1;
   const totalPages = data ? Math.max(1, Math.ceil(data.count / PAGE_SIZE)) : 1;
+  const activeFilterCount = Object.entries(filters).filter(([key, value]) => {
+    if (key === "page") return false;
+    if (Array.isArray(value)) return value.length > 0;
+    return value !== undefined && value !== "";
+  }).length;
 
   return (
-    <div className="grid gap-6 md:grid-cols-[280px_1fr]">
+    <div className="grid gap-4 sm:gap-6 md:grid-cols-[280px_1fr]">
       <aside>
-        <JobFilters value={filters} onApply={setFilters} sources={sources} />
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((open) => !open)}
+          aria-expanded={filtersOpen}
+          className="mb-3 flex w-full items-center justify-between rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-text)] md:hidden"
+        >
+          <span>Фильтры{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ""}</span>
+          <span className="text-[var(--color-text-muted)]">{filtersOpen ? "▲" : "▼"}</span>
+        </button>
+        <div className={`${filtersOpen ? "block" : "hidden"} md:block`}>
+          <JobFilters
+            value={filters}
+            onApply={(next) => {
+              setFilters(next);
+              setFiltersOpen(false);
+            }}
+            sources={sources}
+          />
+        </div>
       </aside>
 
       <section>
