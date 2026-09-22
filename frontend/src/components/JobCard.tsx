@@ -3,6 +3,7 @@ import type { Job } from "../types";
 import { EMPLOYMENT_LABELS, EXPERIENCE_LABELS, formatDate, formatSalary } from "../lib/format";
 import { useAuth } from "../lib/AuthContext";
 import { api } from "../lib/api";
+import { isJobViewed, isPostedWithinLastDay, markJobViewed } from "../lib/viewedJobs";
 
 interface JobCardProps {
   job: Job;
@@ -13,6 +14,13 @@ interface JobCardProps {
 export function JobCard({ job, onFavoriteChange, highlight }: JobCardProps) {
   const { isAuthenticated } = useAuth();
   const [pending, setPending] = useState(false);
+  const [viewed, setViewed] = useState(() => isJobViewed(job.id));
+  const isUnseenAndNew = !viewed && isPostedWithinLastDay(job.posted_at);
+
+  function handleOpen() {
+    markJobViewed(job.id);
+    setViewed(true);
+  }
 
   async function toggleFavorite() {
     if (!isAuthenticated || pending) return;
@@ -34,7 +42,7 @@ export function JobCard({ job, onFavoriteChange, highlight }: JobCardProps) {
     <article
       className={`rounded-xl border p-4 transition-colors ${
         highlight ? "border-[var(--color-accent)]" : "border-[var(--color-border)]"
-      } bg-[var(--color-surface)]`}
+      } ${isUnseenAndNew ? "ring-2 ring-yellow-400" : ""} bg-[var(--color-surface)]`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -83,6 +91,7 @@ export function JobCard({ job, onFavoriteChange, highlight }: JobCardProps) {
           href={job.url}
           target="_blank"
           rel="noreferrer"
+          onClick={handleOpen}
           className="font-medium text-[var(--color-accent)] hover:text-[var(--color-accent-hover)]"
         >
           Открыть →
