@@ -1,4 +1,5 @@
 import pytest
+from django.utils import timezone
 
 from apps.jobs.models import Job
 
@@ -16,6 +17,37 @@ def _make_job(source, **kwargs):
     )
     defaults.update(kwargs)
     return Job.objects.create(**defaults)
+
+
+@pytest.mark.django_db
+def test_default_ordering_puts_null_posted_at_last(source):
+    """
+    Регрессия: Postgres по умолчанию сортирует NULL как "больше любого
+    значения" при ORDER BY ... DESC — без nulls_last=True вакансии без
+    posted_at (например, с Zarplata.ru, где список не отдаёт дату
+    публикации) оказывались бы выше реально свежих вакансий.
+    """
+    _make_job(source, external_id="old", posted_at=timezone.now() - timezone.timedelta(days=5))
+    _make_job(source, external_id="no-date", posted_at=None)
+    _make_job(source, external_id="fresh", posted_at=timezone.now())
+
+    ordered_ids = list(Job.objects.values_list("external_id", flat=True))
+    assert ordered_ids == ["fresh", "old", "no-date"]
+
+
+@pytest.mark.django_db
+def test_explicit_ordering_param_also_puts_null_posted_at_last(api_client, source):
+    """Тот же баг, что и в default-сортировке, но через ?ordering= — этот
+    путь идёт через DRF OrderingFilter в обход Job.Meta.ordering, поэтому
+    чинится отдельно (NullsLastOrderingFilter)."""
+    _make_job(source, external_id="old", posted_at=timezone.now() - timezone.timedelta(days=5))
+    _make_job(source, external_id="no-date", posted_at=None)
+    _make_job(source, external_id="fresh", posted_at=timezone.now())
+
+    response = api_client.get("/api/jobs/", {"ordering": "-posted_at"})
+    ids = [row["id"] for row in response.data["results"]]
+    ordered_external_ids = [Job.objects.get(id=i).external_id for i in ids]
+    assert ordered_external_ids == ["fresh", "old", "no-date"]
 
 
 @pytest.mark.django_db

@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
+from django.db.models import F
 
 
 class JobSource(models.Model):
@@ -73,7 +74,11 @@ class Job(models.Model):
     class Meta:
         verbose_name = "Вакансия"
         verbose_name_plural = "Вакансии"
-        ordering = ["-posted_at", "-created_at"]
+        # Без явного nulls_last Postgres сортирует NULL как "больше любого
+        # значения" при DESC — то есть вакансии без posted_at (например,
+        # Zarplata.ru не отдаёт дату публикации в списке) оказались бы
+        # ВЫШЕ реально свежих вакансий с настоящей датой.
+        ordering = [F("posted_at").desc(nulls_last=True), "-created_at"]
         constraints = [
             models.UniqueConstraint(
                 fields=["source", "external_id"],

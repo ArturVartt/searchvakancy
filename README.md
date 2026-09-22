@@ -10,12 +10,13 @@
 - ✅ **Phase 1** — Django-проект, модели БД (`Job`, `JobSource`, `UserJobFilter`,
   `JobNotification`), Celery + Redis, Django Channels (WebSocket `/ws/jobs/`),
   Docker Compose, базовый read-only REST API.
-- 🟡 **Phase 2** — три источника: HH.ru (`hh_scraper.py`, официальный API —
+- 🟡 **Phase 2** — четыре источника: HH.ru (`hh_scraper.py`, официальный API —
   **закрыт HH с апреля 2026**, см. ниже), Habr Career (`habr_scraper.py`,
-  HTML career.habr.com/vacancies — публичного API нет) и SuperJob
-  (`superjob_scraper.py`, официальный API, нужен бесплатный App ID).
-  `BaseScraper` — общий контракт, `run_all_scrapers` по расписанию каждые
-  30 мин через Celery Beat.
+  HTML career.habr.com/vacancies — публичного API нет), SuperJob
+  (`superjob_scraper.py`, официальный API, нужен бесплатный App ID) и
+  Zarplata.ru (`zarplata_scraper.py`, HTML — та же платформа/база, что у
+  HH.ru, см. нюанс ниже). `BaseScraper` — общий контракт, `run_all_scrapers`
+  по расписанию каждые 30 мин через Celery Beat.
   **VK Jobs не реализован** — `vk.com/jobs` оказался не общей биржей
   вакансий, а собственной карьерной страницей ВКонтакте (SPA на их
   внутреннем `jobs.vacancies` API с анонимным токеном) — см. README ниже.
@@ -137,7 +138,7 @@ celery -A config beat -l info
 `CELERY_BEAT_SCHEDULE` в `config/settings/base.py`) Celery Beat запускает
 `apps.jobs.tasks.run_all_scrapers`.
 
-Запустить скрейпер вручную (`hh`, `habr` или `superjob`):
+Запустить скрейпер вручную (`hh`, `habr`, `superjob` или `zarplata`):
 
 ```bash
 docker compose exec backend python manage.py shell -c "from apps.jobs.tasks import run_scraper; print(run_scraper('habr'))"
@@ -186,6 +187,33 @@ docker compose exec backend python manage.py shell -c "from apps.jobs.tasks impo
 > - Текст (`profession`, `candidat`, навыки) приходит с неэкранированными
 >   HTML-сущностями (`"Python &amp; React"` вместо `"Python & React"`) —
 >   раскодируется через `html.unescape()`.
+
+> **Zarplata.ru** — HTML-скрейпинг (BeautifulSoup), публичного API нет.
+> ⚠️ Важная оговорка: это тот же движок/база, что и у HH.ru (те же
+> `data-qa`-атрибуты, дизайн-система "Magritte", в её собственном JS-конфиге
+> `apiHost: "https://api.hh.ru"` — их SSR-бэкенд сам ходит в закрытый в
+> апреле 2026 API HH.ru и рендерит результат в HTML любому посетителю).
+> `robots.txt` zarplata.ru явно разрешает `/vacancies/*?page=` и запрещает
+> только `/vacancy/*` (детальные страницы, сюда и не ходим) — технически и
+> формально чисто, но по сути это тот же источник данных, доступ к которому
+> HH Group намеренно закрыла на своём основном домене. Решение подключить
+> источник несмотря на это принял владелец проекта осознанно (22.09.2026).
+> Нюансы разметки:
+> - Список не отдаёт дату публикации вакансии вообще (`posted_at=None` для
+>   всех вакансий отсюда) — раньше это ломало сортировку (см. ниже).
+> - Опыт и зарплата ОБА рендерятся через `<data value="...">` — отличаются
+>   только по содержимому `value` (цифры = сумма, `RUB`/`USD`/`EUR` =
+>   валюта, `"1-3"` и т.п. = опыт), общего `data-qa` для суммы зарплаты нет.
+> - Enum опыта (`noExperience`/`between1And3`/`between3And6`/`moreThan6`)
+>   идентичен HH.ru — переиспользуется та же логика маппинга.
+
+> **Postgres NULL + `ORDER BY -posted_at`**: по умолчанию Postgres считает
+> NULL "больше любого значения", поэтому вакансии без даты публикации
+> (Zarplata.ru) оказывались бы выше реально свежих. Исправлено через
+> `nulls_last=True` — и в `Job.Meta.ordering` (сортировка по умолчанию), и
+> отдельно в `NullsLastOrderingFilter` (`apps/jobs/filters.py`) для случая,
+> когда сортировка явно запрошена через `?ordering=-posted_at` — обычный
+> DRF `OrderingFilter` эту настройку модели не учитывает.
 
 ### VK Jobs — не реализован
 

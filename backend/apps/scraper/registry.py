@@ -5,10 +5,12 @@
 from .habr_scraper import HabrScraper
 from .hh_scraper import HHScraper
 from .superjob_scraper import SuperJobScraper
+from .zarplata_scraper import ZarplataScraper
 
 SCRAPERS = {
     "hh": HHScraper,
     "habr": HabrScraper,
     "superjob": SuperJobScraper,
+    "zarplata": ZarplataScraper,
     # "vk": VKScraper,  # см. README — vk.com/jobs оказался не тем, чем выглядит
 }

@@ -5,10 +5,10 @@ from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.filters import SearchFilter
 from rest_framework.response import Response
 
-from .filters import JobFilterSet
+from .filters import JobFilterSet, NullsLastOrderingFilter
 from .models import FavoriteJob, Job, JobNotification, JobSource, UserJobFilter
 from .serializers import (
     JobDetailSerializer,
@@ -37,7 +37,7 @@ class JobViewSet(viewsets.ReadOnlyModelViewSet):
     """
 
     queryset = Job.objects.filter(is_active=True).select_related("source")
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter, NullsLastOrderingFilter]
     filterset_class = JobFilterSet
     search_fields = ["title", "company", "description"]
     ordering_fields = ["posted_at", "created_at", "salary_from", "salary_to"]

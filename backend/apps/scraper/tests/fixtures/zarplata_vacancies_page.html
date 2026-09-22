@@ -1,0 +1,68 @@
+<!--
+  Урезанная, но структурно верная реконструкция реальной разметки
+  zarplata.ru/search/vacancy (снята вручную 22.09.2026) — только то, что
+  нужно для проверки CSS-селекторов ZarplataScraper. data-qa-атрибуты и
+  формат <data value="..."> для зарплаты/опыта — точно как на живом сайте.
+-->
+<html>
+<body>
+<div class="vacancy-search-list">
+
+  <article data-qa="vacancy-serp__vacancy">
+    <a data-qa="serp-item__title" href="/vacancy/137651428?query=Frontend&amp;hhtmFrom=vacancy_search_list">
+      <span data-qa="serp-item__title-text">Frontend-разработчик Vue.js</span>
+    </a>
+    <div>
+      <data value="1-3" data-qa="vacancy-serp__vacancy-work-experience-between1And3">Опыт 1-3 года</data>
+    </div>
+    <a data-qa="vacancy-serp__vacancy-employer"><span data-qa="vacancy-serp__vacancy-employer-text">Мой Кассир</span></a>
+    <span data-qa="vacancy-serp__vacancy-address">Москва</span>
+    <div data-qa="vacancy-serp__vacancy_snippet_requirement">Опыт работы с Vue.js от 1 года.</div>
+  </article>
+
+  <article data-qa="vacancy-serp__vacancy">
+    <a data-qa="serp-item__title" href="/vacancy/137700002?query=Frontend">
+      <span data-qa="serp-item__title-text">Программист-разработчик (FrontEnd)</span>
+    </a>
+    <div>
+      <data value="3-6" data-qa="vacancy-serp__vacancy-work-experience-between3And6">Опыт 3-6 лет</data>
+      <span data-qa="vacancy-label-work-schedule-remote">Можно удалённо</span>
+    </div>
+    <div>
+      <data value="180000">180 000</data> &ndash; <data value="240000">240 000</data><data value="RUB">₽</data>
+    </div>
+    <a data-qa="vacancy-serp__vacancy-employer"><span data-qa="vacancy-serp__vacancy-employer-text">ТехноСтарт</span></a>
+    <span data-qa="vacancy-serp__vacancy-address">Санкт-Петербург</span>
+    <div data-qa="vacancy-serp__vacancy_snippet_responsibility">Разработка интерфейсов на React/Vue, оптимизация производительности.</div>
+  </article>
+
+  <article data-qa="vacancy-serp__vacancy">
+    <a data-qa="serp-item__title" href="/vacancy/137700099?query=Frontend">
+      <span data-qa="serp-item__title-text">Менеджер по продажам</span>
+    </a>
+    <div>
+      <data value="noExperience" data-qa="vacancy-serp__vacancy-work-experience-noExperience">Без опыта</data>
+    </div>
+    <a data-qa="vacancy-serp__vacancy-employer"><span data-qa="vacancy-serp__vacancy-employer-text">Торговая компания</span></a>
+    <span data-qa="vacancy-serp__vacancy-address">Москва</span>
+    <div data-qa="vacancy-serp__vacancy_snippet_requirement">Активные продажи, опыт в B2B приветствуется.</div>
+  </article>
+
+  <article data-qa="vacancy-serp__vacancy">
+    <a data-qa="serp-item__title" href="/vacancy/137700555?query=Frontend">
+      <span data-qa="serp-item__title-text">Senior Frontend-разработчик</span>
+    </a>
+    <div>
+      <data value="6+" data-qa="vacancy-serp__vacancy-work-experience-moreThan6">Опыт 6+ лет</data>
+    </div>
+    <div>
+      <data value="300000">300 000</data><data value="RUB">₽</data>
+    </div>
+    <a data-qa="vacancy-serp__vacancy-employer"><span data-qa="vacancy-serp__vacancy-employer-text">БигТех</span></a>
+    <span data-qa="vacancy-serp__vacancy-address">Новосибирск</span>
+    <div data-qa="vacancy-serp__vacancy_snippet_requirement">TypeScript, React, архитектура SPA.</div>
+  </article>
+
+</div>
+</body>
+</html>
