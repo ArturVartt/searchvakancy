@@ -1,8 +1,8 @@
 # SearchVakancy
 
 Агрегатор вакансий Frontend-разработчиков (HH.ru, Habr Career, SuperJob,
-Zarplata.ru, IT-Jobs.uz, VK — подробности по каждому источнику см.
-"Скрейпинг вакансий" ниже) с real-time обновлениями и уведомлениями в Telegram.
+Zarplata.ru, IT-Jobs.uz, VK, Staff.am — подробности по каждому источнику
+см. "Скрейпинг вакансий" ниже) с real-time обновлениями и уведомлениями в Telegram.
 
 Полный план разработки: см. историю чата / документ плана. Статус по фазам — ниже.
 
@@ -11,17 +11,19 @@ Zarplata.ru, IT-Jobs.uz, VK — подробности по каждому ис�
 - ✅ **Phase 1** — Django-проект, модели БД (`Job`, `JobSource`, `UserJobFilter`,
   `JobNotification`), Celery + Redis, Django Channels (WebSocket `/ws/jobs/`),
   Docker Compose, базовый read-only REST API.
-- 🟡 **Phase 2** — шесть источников: HH.ru (`hh_scraper.py`, официальный API —
+- 🟡 **Phase 2** — семь источников: HH.ru (`hh_scraper.py`, официальный API —
   **закрыт HH с апреля 2026**, см. ниже), Habr Career (`habr_scraper.py`,
   HTML career.habr.com/vacancies — публичного API нет), SuperJob
   (`superjob_scraper.py`, официальный API, нужен бесплатный App ID),
   Zarplata.ru (`zarplata_scraper.py`, HTML — та же платформа/база, что у
   HH.ru, см. нюанс ниже), IT-Jobs.uz (`itjobsuz_scraper.py`, вакансии по
-  Узбекистану — HTML с inline JSON, публичного API нет) и VK
+  Узбекистану — HTML с inline JSON, публичного API нет), VK
   (`vk_scraper.py`, HTML team.vk.company — публичный корпоративный
   карьерный сайт холдинга VK, не путать с закрытым `vk.com/jobs`, см.
-  нюанс ниже). `BaseScraper` — общий контракт, `run_all_scrapers` по
-  расписанию каждые 30 мин через Celery Beat.
+  нюанс ниже) и Staff.am (`staffam_scraper.py`, вакансии по Армении —
+  HTML с embedded JSON `__NEXT_DATA__`, публичного API нет, см. нюанс
+  ниже). `BaseScraper` — общий контракт, `run_all_scrapers` по расписанию
+  каждые 30 мин через Celery Beat.
 - ✅ **Phase 3** — Telegram-бот (`apps/telegram_bot`): команды `/start`,
   `/subscribe`, `/unsubscribe`, `/latest`, `/filters`, `/trending`; Celery-таск
   `notify_users_for_jobs`, который при появлении новых вакансий проверяет
@@ -157,7 +159,7 @@ celery -A config beat -l info
 `CELERY_BEAT_SCHEDULE` в `config/settings/base.py`) Celery Beat запускает
 `apps.jobs.tasks.run_all_scrapers`.
 
-Запустить скрейпер вручную (`hh`, `habr`, `superjob`, `zarplata`, `itjobsuz` или `vk`):
+Запустить скрейпер вручную (`hh`, `habr`, `superjob`, `zarplata`, `itjobsuz`, `vk` или `staffam`):
 
 ```bash
 docker compose exec backend python manage.py shell -c "from apps.jobs.tasks import run_scraper; print(run_scraper('habr'))"
@@ -303,6 +305,64 @@ docker compose exec backend python manage.py shell -c "from apps.jobs.tasks impo
 пользователя, и то не гарантированно — заметно более хрупкое и рискованное
 решение, чем всё остальное в проекте. Владелец проекта решил не тратить на
 это время сейчас (22.09.2026).
+
+> **Staff.am** (`staffam_scraper.py`) — крупнейший джоб-борд Армении
+> (~80% локального рынка по независимым оценкам). Триггер добавления —
+> тот же вопрос про hirehi.ru/VK/Сбер (см. VK выше), после которого
+> владелец проекта попросил поискать что-то ещё по Узбекистану и Армении.
+> `api.staff.am/robots.txt` запрещает всё (`Disallow: /`), но сам
+> `staff.am` — обычный Next.js SSR с открытым `robots.txt`
+> (`Allow: /`, `Disallow: /*?`, но `Allow: /*?page=` — пагинация разрешена
+> явно) — та же логика, что и с VK: не дёргаем закрытый бэкенд напрямую,
+> только то, что сам сайт отдаёт браузеру. Next.js встраивает пропсы
+> страницы в `<script id="__NEXT_DATA__">` обычным (не экранированным)
+> JSON — надёжнее парсить его, чем вёрстку (список — react-native-web,
+> хэшированные CSS-классы вроде `css-175oi2r`, ломаются от билда к билду).
+> Категория `/en/jobs/software-development` широкая (DevOps/Mobile/
+> Backend/Data вперемешку, тот же случай, что у Habr), поэтому нужен
+> `is_frontend_relevant()` — **но по заголовку + структурированным hard
+> skills (`skills[].type == 2`), а не по всему тексту описания**. Причина:
+> поймано вживую 22.09.2026 на "Senior .Net Engineer" (обычная бэкенд
+> C#/.NET-вакансия), чьи requirements заканчивались фразой "knowledge of
+> TypeScript and Angular is an advantage" — при фильтре по всему описанию
+> это (и несколько похожих) утекало бы в выдачу только из-за вскользь
+> упомянутого "будет плюсом" технологии, точно та же ловушка, что уже
+> задокументирована у SuperJob. Skills у Staff.am — теги, расставленные
+> самим работодателем (hard skills type=2 отдельно от soft skills type=1
+> вроде "Teamwork"), поэтому фильтр по ним намного точнее, чем по прозе.
+> Зарплату Staff.am почти никогда не публикует (как и VK/Habr).
+
+### Узбекистан и Армения — что ещё проверялось и отклонено
+
+По следам того же вопроса проверены и отклонены (22.09.2026):
+- **hh.uz** — та же платформа HH Group, что и Zarplata.ru/HH.ru, и HTML
+  тоже технически отдаётся (`/search/vacancy` возвращает настоящие
+  вакансии, не 403, как основной hh.ru). Но, в отличие от Zarplata.ru,
+  `robots.txt` для `User-agent: *` (не только Yandex) содержит
+  `Disallow: *?*` — блокирует ЛЮБОЙ URL с query-строкой для обычных ботов,
+  а поиск на этой платформе только через `?text=&area=` и не имеет
+  path-based альтернативы. Yandex у них в исключении (свой блок с
+  `Clean-param`, без общего `Disallow: *?*`) — то есть площадка сознательно
+  разрешает поиск в индексе только конкретно Яндексу, а не ботам вообще.
+  Решили не обходить это технически, как и не обходили `trudvsem.ru`.
+- **Ishkop.uz** — `robots.txt` явно запрещает `/vacansii*` для всех
+  ботов, и этот путь — реальная, живая страница "все вакансии"
+  (проверено: `GET /vacansii` -> 200, заголовок "Работа, вакансии в
+  Узбекистане", 117 КБ контента). Списочные страницы вакансий также лежат
+  под Cyrillic-путём `/вакансии/<Должность>` — тот же функционал, что и
+  под запрещённым `/vacansii*`, так что дух правила однозначен: не ходить
+  по вакансиям вообще. Тот же случай, что и `trudvsem.ru`.
+- **ГородРабот.uz** (gorodrabot.uz) — сам является мета-агрегатором
+  9 чужих источников (as-is, по их собственному описанию). Скрейпить
+  агрегатор агрегаторов — тот же архитектурный тупик, что и с
+  `careerist.ru` (см. историю: careerist.ru тоже отклонён именно потому,
+  что re-агрегирует чужие вакансии "партнёров" без первичных прав на них).
+- **job.am** (второй по популярности джоб-борд Армении) — `robots.txt`
+  явно запрещает `/api/*`, `/*/api/*` (с большой и маленькой буквы), что
+  само по себе не блокирует HTML-страницы вакансий, но не проверялся
+  глубже: Staff.am уже даёт качественное покрытие армянского рынка
+  (~80%), решили не дублировать источник ради предельного покрытия — при
+  необходимости можно вернуться к этой проверке отдельно.
 
 ## Telegram-бот
 
