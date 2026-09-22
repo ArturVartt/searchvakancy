@@ -4,8 +4,17 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # 127.0.0.11 — встроенный DNS докера. Без этого nginx резолвит "backend"
+    # ОДИН раз при старте/reload и кэширует IP навсегда — после пересборки
+    # одного backend-контейнера (без пересборки frontend) IP меняется, и
+    # nginx продолжает стучаться в старый ("connect() failed... Connection
+    # refused"), пока его не перезапустить руками. Переменная в proxy_pass
+    # заставляет резолвить заново на каждый запрос (с учётом valid=10s).
+    resolver 127.0.0.11 valid=10s;
+    set $backend http://backend:8000;
+
     location /api/ {
-        proxy_pass http://backend:8000;
+        proxy_pass $backend;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -13,7 +22,7 @@ server {
     }
 
     location /admin/ {
-        proxy_pass http://backend:8000;
+        proxy_pass $backend;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -21,15 +30,15 @@ server {
     }
 
     location /static/ {
-        proxy_pass http://backend:8000;
+        proxy_pass $backend;
     }
 
     location /media/ {
-        proxy_pass http://backend:8000;
+        proxy_pass $backend;
     }
 
     location /ws/ {
-        proxy_pass http://backend:8000;
+        proxy_pass $backend;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";

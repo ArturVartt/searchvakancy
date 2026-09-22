@@ -34,3 +34,7 @@ Thumbs.db
 
 # TLS-сертификаты Let's Encrypt (приватные ключи!) — генерирует init-letsencrypt.sh
 certbot/
+
+# Одноразовые SSH-скрипты для прод-деплоя (внутри — пароль от сервера открытым текстом!)
+ssh_run.py
+ssh_probe.py
