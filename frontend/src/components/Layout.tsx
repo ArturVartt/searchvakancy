@@ -48,7 +48,7 @@ export function Layout() {
   return (
     <div className="min-h-full">
       <header className="sticky top-0 z-10 border-b border-[var(--color-border)] bg-[var(--color-surface)]/90 backdrop-blur">
-        <div className="mx-auto max-w-5xl px-4 py-3">
+        <div className="w-full px-4 py-3">
           {/* Верхний ряд — лого, статистика и кнопки — всегда в одну строку
               на любой ширине экрана (умещается даже на 320px). Нав-ссылки
               вынесены в отдельный ряд ниже вместо flex-wrap на общем
