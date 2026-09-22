@@ -10,10 +10,12 @@
 - ✅ **Phase 1** — Django-проект, модели БД (`Job`, `JobSource`, `UserJobFilter`,
   `JobNotification`), Celery + Redis, Django Channels (WebSocket `/ws/jobs/`),
   Docker Compose, базовый read-only REST API.
-- 🟡 **Phase 2** — скрейперы HH.ru (`hh_scraper.py`, официальный API) и
-  Habr Career (`habr_scraper.py`, HTML career.habr.com/vacancies —
-  публичного API нет). `BaseScraper` — общий контракт, `run_all_scrapers`
-  по расписанию каждые 30 мин через Celery Beat.
+- 🟡 **Phase 2** — три источника: HH.ru (`hh_scraper.py`, официальный API —
+  **закрыт HH с апреля 2026**, см. ниже), Habr Career (`habr_scraper.py`,
+  HTML career.habr.com/vacancies — публичного API нет) и SuperJob
+  (`superjob_scraper.py`, официальный API, нужен бесплатный App ID).
+  `BaseScraper` — общий контракт, `run_all_scrapers` по расписанию каждые
+  30 мин через Celery Beat.
   **VK Jobs не реализован** — `vk.com/jobs` оказался не общей биржей
   вакансий, а собственной карьерной страницей ВКонтакте (SPA на их
   внутреннем `jobs.vacancies` API с анонимным токеном) — см. README ниже.
@@ -135,7 +137,7 @@ celery -A config beat -l info
 `CELERY_BEAT_SCHEDULE` в `config/settings/base.py`) Celery Beat запускает
 `apps.jobs.tasks.run_all_scrapers`.
 
-Запустить скрейпер вручную (`hh` или `habr`):
+Запустить скрейпер вручную (`hh`, `habr` или `superjob`):
 
 ```bash
 docker compose exec backend python manage.py shell -c "from apps.jobs.tasks import run_scraper; print(run_scraper('habr'))"
@@ -147,9 +149,14 @@ docker compose exec backend python manage.py shell -c "from apps.jobs.tasks impo
 идти со второго и последующих прогонов (см. `is_first_sync` в
 `BaseScraper.run()` и `apps/jobs/tasks.py`).
 
-> **HH.ru** отдаёт `{"errors":[{"type":"forbidden"}]}` при запросах с "плохих"
-> (дата-центровых/облачных) IP — это блокировка на стороне их DDoS-Guard,
-> не баг скрейпера. Запускайте с обычного сервера/дома, либо через прокси.
+> **HH.ru** отдаёт `{"errors":[{"type":"forbidden"}]}` — и это **не баг и не
+> бан по IP дата-центра** (как можно было бы подумать). С апреля 2026 HH.ru
+> закрыл публичный `GET /vacancies` для всех неавторизованных запросов —
+> ключ теперь дают только работодателям/рекрутинговым сервисам с
+> верификацией аккаунта. Тот же 403 будет и с обычного домашнего интернета.
+> Источник: https://habr.com/ru/news/1069286/. Легального способа тянуть
+> вакансии с HH.ru без такого ключа сейчас нет — источник фактически
+> недоступен для этого проекта, пока не появится employer-ключ.
 
 > **Habr Career** публичного API не имеет — парсим HTML `career.habr.com/vacancies`
 > (BeautifulSoup). Два нюанса, на которые стоит обратить внимание при
@@ -160,6 +167,25 @@ docker compose exec backend python manage.py shell -c "from apps.jobs.tasks impo
 >   по заголовку — обязательная вторая проверка, не подстраховка.
 > - Диапазон зарплаты на сайте — **"от X до Y ₽"** (словами), а не "X – Y ₽"
 >   через тире, как можно было бы предположить с ходу.
+
+> **SuperJob** — единственный источник с открытым официальным API. Нужен
+> бесплатный App ID: зарегистрироваться на superjob.ru как работодатель →
+> https://api.superjob.ru/register/ → полученный Secret key вписать в
+> `SUPERJOB_API_KEY` (`.env`/`.env.prod`). Без ключа скрейпер тихо
+> пропускает прогон (не ошибка, см. `fetch_raw_jobs`). Нюансы (проверено
+> вживую 22.09.2026):
+> - `robots.txt` superjob.ru явно запрещает краулить `/vacancy/` и
+>   `/vacancy/search/*` — поэтому именно API, не HTML-скрейпинг, как у Habr.
+> - `?keyword=` ищет по всему тексту вакансии, а не только по названию —
+>   параметр `srws=1` ("искать только в названии") эффекта не дал (либо не
+>   тот параметр, либо не работает). Поэтому `is_frontend_relevant()` тут
+>   проверяет **только заголовок**, а не заголовок+описание, как у
+>   остальных скрейперов — иначе в выдачу лезли карточки вроде "Старший
+>   инженер по исследованиям в области ИИ" только потому, что слово
+>   "frontend" где-то мелькнуло в тексте описания.
+> - Текст (`profession`, `candidat`, навыки) приходит с неэкранированными
+>   HTML-сущностями (`"Python &amp; React"` вместо `"Python & React"`) —
+>   раскодируется через `html.unescape()`.
 
 ### VK Jobs — не реализован
 

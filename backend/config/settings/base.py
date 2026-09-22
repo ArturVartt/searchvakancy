@@ -200,6 +200,11 @@ SPECTACULAR_SETTINGS = {
 TELEGRAM_BOT_TOKEN = env("TELEGRAM_BOT_TOKEN", default="")
 
 # ---------------------------------------------------------------------------
+# SuperJob API (apps/scraper/superjob_scraper.py) — https://api.superjob.ru/register/
+# ---------------------------------------------------------------------------
+SUPERJOB_API_KEY = env("SUPERJOB_API_KEY", default="")
+
+# ---------------------------------------------------------------------------
 # Логирование — общее для runserver/daphne, Celery worker/beat и runbot.
 # Уровень настраивается через LOG_LEVEL, чтобы в проде можно было поднять
 # до WARNING без правки кода. django.db.backends отдельно приглушён —
