@@ -67,7 +67,7 @@ export function JobCard({ job, onFavoriteChange, highlight }: JobCardProps) {
             disabled={pending}
             aria-label={job.is_favorited ? "Убрать из избранного" : "Добавить в избранное"}
             aria-pressed={job.is_favorited}
-            className="shrink-0 text-sm leading-none disabled:opacity-50 sm:text-xl"
+            className="-m-1 shrink-0 p-1 text-lg leading-none disabled:opacity-50 sm:m-0 sm:p-0 sm:text-xl"
           >
             <span className={job.is_favorited ? "text-yellow-400" : "text-[var(--color-text-muted)]"}>
               {job.is_favorited ? "★" : "☆"}
@@ -134,7 +134,7 @@ export function JobCard({ job, onFavoriteChange, highlight }: JobCardProps) {
           target="_blank"
           rel="noreferrer"
           onClick={handleOpen}
-          className="shrink-0 font-medium text-[var(--color-accent)] hover:text-[var(--color-accent-hover)]"
+          className="shrink-0 rounded-md bg-[var(--color-accent)]/10 px-2 py-1 text-xs font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20 sm:bg-transparent sm:px-0 sm:py-0 sm:hover:bg-transparent sm:hover:text-[var(--color-accent-hover)]"
         >
           Открыть →
         </a>

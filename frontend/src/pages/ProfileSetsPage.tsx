@@ -83,10 +83,10 @@ export function ProfileSetsPage() {
               </a>
             </div>
 
-            <div className="mt-1.5 flex gap-1.5 text-xs sm:mt-2 sm:gap-2 sm:text-sm">
+            <div className="mt-1.5 flex gap-2 text-sm sm:mt-2">
               <Link
                 to={`/profile-sets/${set.id}/edit`}
-                className="flex-1 rounded-lg border border-[var(--color-border)] px-2 py-1 text-center hover:bg-[var(--color-surface-hover)] sm:px-3 sm:py-1.5"
+                className="flex-1 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-center hover:bg-[var(--color-surface-hover)]"
               >
                 Изменить
               </Link>
@@ -94,7 +94,7 @@ export function ProfileSetsPage() {
                 type="button"
                 onClick={() => handleDelete(set.id)}
                 disabled={deletingId === set.id}
-                className="rounded-lg border border-[var(--color-danger)] px-2 py-1 text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 disabled:opacity-50 sm:px-3 sm:py-1.5"
+                className="rounded-lg border border-[var(--color-danger)] px-3 py-1.5 text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 disabled:opacity-50"
               >
                 {deletingId === set.id ? "…" : "Удалить"}
               </button>

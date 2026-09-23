@@ -80,8 +80,15 @@ export function JobsPage() {
   }).length;
 
   return (
-    <div className="grid gap-4 sm:gap-6 md:grid-cols-[280px_1fr]">
-      <aside>
+    <div className="grid min-w-0 gap-4 sm:gap-6 md:grid-cols-[280px_minmax(0,1fr)]">
+      {/* min-w-0 на самой grid-раскладке и на обоих её элементах — у grid- и
+          flex-детей по умолчанию min-width: auto, то есть они отказываются
+          сжиматься меньше своего содержимого. Если где-то внутри (фильтры,
+          карточка вакансии) есть неразрывный кусок текста чуть шире экрана,
+          Без этого вся колонка раздувается за пределы вьюпорта — и кажется,
+          что "не помещается" именно карточка, хотя на самом деле шире вся
+          grid-колонка, в которой она лежит. */}
+      <aside className="min-w-0">
         <button
           type="button"
           onClick={() => setFiltersOpen((open) => !open)}
@@ -103,7 +110,7 @@ export function JobsPage() {
         </div>
       </aside>
 
-      <section>
+      <section className="min-w-0">
         {newCount > 0 && (
           <button
             type="button"
