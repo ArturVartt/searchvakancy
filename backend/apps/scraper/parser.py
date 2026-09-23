@@ -11,13 +11,18 @@ FRONTEND_KEYWORDS = (
     "front end",
     "фронтенд",
     "фронт-энд",
+    "frontend engineer",
+    "frontend developer",
+    "frontend разработчик",
+    "product engineer",
     "react",
+    "react.js",
     "vue",
-    "angular",
     "javascript",
     "typescript",
     "html",
     "css",
+    "next.js",
 )
 
 
