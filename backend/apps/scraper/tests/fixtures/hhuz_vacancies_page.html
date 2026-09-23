@@ -1,0 +1,59 @@
+<!--
+  Урезанная, но структурно верная реконструкция реальной разметки
+  hh.uz/search/vacancy?text=frontend&area=97 (снята вручную 22.09.2026) —
+  та же платформа HH Group, что и Zarplata.ru, те же data-qa-атрибуты.
+  В отличие от zarplata_vacancies_page.html здесь href уже абсолютные
+  ("https://hh.uz/vacancy/...") — так реально отдаёт hh.uz, в отличие от
+  относительных на zarplata.ru — обе ветки url-конструктора должны
+  работать.
+-->
+<html>
+<body>
+<div class="vacancy-search-list">
+
+  <article data-qa="vacancy-serp__vacancy">
+    <a data-qa="serp-item__title" href="https://hh.uz/vacancy/137527751?query=frontend&amp;hhtmFrom=vacancy_search_list">
+      <span data-qa="serp-item__title-text">Fullstack-разработчик</span>
+    </a>
+    <div>
+      <data value="1-3" data-qa="vacancy-serp__vacancy-work-experience-between1And3">Опыт 1-3 года</data>
+    </div>
+    <div>
+      <data value="8000000">8 000 000</data><data value="UZS">so'm</data>
+    </div>
+    <a data-qa="vacancy-serp__vacancy-employer"><span data-qa="vacancy-serp__vacancy-employer-text">ООО FAIR-METALL</span></a>
+    <span data-qa="vacancy-serp__vacancy-address">Ташкент, 2-й Джаркурганский проезд, 22А</span>
+    <div data-qa="vacancy-serp__vacancy_snippet_requirement">React, Node.js, опыт fullstack-разработки от 1 года.</div>
+  </article>
+
+  <article data-qa="vacancy-serp__vacancy">
+    <a data-qa="serp-item__title" href="https://hh.uz/vacancy/136908753?query=frontend">
+      <span data-qa="serp-item__title-text">Frontend-разработчик</span>
+    </a>
+    <div>
+      <data value="1-3" data-qa="vacancy-serp__vacancy-work-experience-between1And3">Опыт 1-3 года</data>
+      <span data-qa="vacancy-label-work-schedule-remote">Можно удалённо</span>
+    </div>
+    <div>
+      <data value="300">300</data> &ndash; <data value="700">700</data><data value="USD">$</data>
+    </div>
+    <a data-qa="vacancy-serp__vacancy-employer"><span data-qa="vacancy-serp__vacancy-employer-text">TENZOR SOFT</span></a>
+    <span data-qa="vacancy-serp__vacancy-address">Ташкент, Яшнабадский район</span>
+    <div data-qa="vacancy-serp__vacancy_snippet_responsibility">Разработка интерфейсов на React, вёрстка.</div>
+  </article>
+
+  <article data-qa="vacancy-serp__vacancy">
+    <a data-qa="serp-item__title" href="https://hh.uz/vacancy/136900001?query=frontend">
+      <span data-qa="serp-item__title-text">Менеджер по продажам</span>
+    </a>
+    <div>
+      <data value="noExperience" data-qa="vacancy-serp__vacancy-work-experience-noExperience">Без опыта</data>
+    </div>
+    <a data-qa="vacancy-serp__vacancy-employer"><span data-qa="vacancy-serp__vacancy-employer-text">Торговая компания</span></a>
+    <span data-qa="vacancy-serp__vacancy-address">Ташкент</span>
+    <div data-qa="vacancy-serp__vacancy_snippet_requirement">Активные продажи, опыт в B2B приветствуется.</div>
+  </article>
+
+</div>
+</body>
+</html>

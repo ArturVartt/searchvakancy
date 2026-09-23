@@ -4,6 +4,7 @@
 """
 from .habr_scraper import HabrScraper
 from .hh_scraper import HHScraper
+from .hhuz_scraper import HHUzScraper
 from .itjobsuz_scraper import ItJobsUzScraper
 from .staffam_scraper import StaffAmScraper
 from .superjob_scraper import SuperJobScraper
@@ -18,4 +19,5 @@ SCRAPERS = {
     "itjobsuz": ItJobsUzScraper,
     "vk": VKScraper,
     "staffam": StaffAmScraper,
+    "hhuz": HHUzScraper,
 }

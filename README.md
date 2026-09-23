@@ -1,8 +1,9 @@
 # SearchVakancy
 
 Агрегатор вакансий Frontend-разработчиков (HH.ru, Habr Career, SuperJob,
-Zarplata.ru, IT-Jobs.uz, VK, Staff.am — подробности по каждому источнику
-см. "Скрейпинг вакансий" ниже) с real-time обновлениями и уведомлениями в Telegram.
+Zarplata.ru, IT-Jobs.uz, VK, Staff.am, HH.uz — подробности по каждому
+источнику см. "Скрейпинг вакансий" ниже) с real-time обновлениями и
+уведомлениями в Telegram.
 
 Полный план разработки: см. историю чата / документ плана. Статус по фазам — ниже.
 
@@ -11,7 +12,7 @@ Zarplata.ru, IT-Jobs.uz, VK, Staff.am — подробности по каждо
 - ✅ **Phase 1** — Django-проект, модели БД (`Job`, `JobSource`, `UserJobFilter`,
   `JobNotification`), Celery + Redis, Django Channels (WebSocket `/ws/jobs/`),
   Docker Compose, базовый read-only REST API.
-- 🟡 **Phase 2** — семь источников: HH.ru (`hh_scraper.py`, официальный API —
+- 🟡 **Phase 2** — восемь источников: HH.ru (`hh_scraper.py`, официальный API —
   **закрыт HH с апреля 2026**, см. ниже), Habr Career (`habr_scraper.py`,
   HTML career.habr.com/vacancies — публичного API нет), SuperJob
   (`superjob_scraper.py`, официальный API, нужен бесплатный App ID),
@@ -20,10 +21,13 @@ Zarplata.ru, IT-Jobs.uz, VK, Staff.am — подробности по каждо
   Узбекистану — HTML с inline JSON, публичного API нет), VK
   (`vk_scraper.py`, HTML team.vk.company — публичный корпоративный
   карьерный сайт холдинга VK, не путать с закрытым `vk.com/jobs`, см.
-  нюанс ниже) и Staff.am (`staffam_scraper.py`, вакансии по Армении —
+  нюанс ниже), Staff.am (`staffam_scraper.py`, вакансии по Армении —
   HTML с embedded JSON `__NEXT_DATA__`, публичного API нет, см. нюанс
-  ниже). `BaseScraper` — общий контракт, `run_all_scrapers` по расписанию
-  каждые 30 мин через Celery Beat.
+  ниже) и HH.uz (`hhuz_scraper.py`, вакансии по Узбекистану, та же
+  платформа HH Group, что у Zarplata.ru — **⚠️ подключён вопреки
+  `robots.txt`, осознанное решение владельца проекта, см. нюанс ниже**).
+  `BaseScraper` — общий контракт, `run_all_scrapers` по расписанию каждые
+  30 мин через Celery Beat.
 - ✅ **Phase 3** — Telegram-бот (`apps/telegram_bot`): команды `/start`,
   `/subscribe`, `/unsubscribe`, `/latest`, `/filters`, `/trending`; Celery-таск
   `notify_users_for_jobs`, который при появлении новых вакансий проверяет
@@ -159,7 +163,7 @@ celery -A config beat -l info
 `CELERY_BEAT_SCHEDULE` в `config/settings/base.py`) Celery Beat запускает
 `apps.jobs.tasks.run_all_scrapers`.
 
-Запустить скрейпер вручную (`hh`, `habr`, `superjob`, `zarplata`, `itjobsuz`, `vk` или `staffam`):
+Запустить скрейпер вручную (`hh`, `habr`, `superjob`, `zarplata`, `itjobsuz`, `vk`, `staffam` или `hhuz`):
 
 ```bash
 docker compose exec backend python manage.py shell -c "from apps.jobs.tasks import run_scraper; print(run_scraper('habr'))"
@@ -332,19 +336,33 @@ docker compose exec backend python manage.py shell -c "from apps.jobs.tasks impo
 > вроде "Teamwork"), поэтому фильтр по ним намного точнее, чем по прозе.
 > Зарплату Staff.am почти никогда не публикует (как и VK/Habr).
 
+> **⚠️ HH.uz** (`hhuz_scraper.py`) — единственный источник в проекте,
+> подключённый ВОПРЕКИ `robots.txt`, осознанно. Та же платформа HH Group,
+> что и Zarplata.ru/HH.ru: HTML `/search/vacancy` отдаётся нормально (не
+> 403, как у закрытого с апреля 2026 hh.ru), но `robots.txt` для
+> `User-agent: *` содержит `Disallow: *?*` — блокирует ЛЮБОЙ URL с
+> query-строкой для обычных ботов, а поиск на этой платформе только через
+> `?text=&area=` и не имеет path-based альтернативы. Для `User-agent:
+> Yandex` у них отдельный, более мягкий блок (`Clean-param`, без общего
+> `Disallow: *?*`) — то есть площадка сознательно пускает в индекс
+> конкретно Яндекс, не ботов вообще.
+>
+> Первое решение (22.09.2026) было не подключать — та же логика, что и с
+> `trudvsem.ru`/`Ishkop.uz` ниже. Но владелец проекта прямо спросил, что
+> будет "по итогу" за нарушение, и после объяснения, что `robots.txt` —
+> не закон и не техническое ограничение (это добровольный протокол,
+> нарушение не создаёт юридической ответственности для маленького
+> некоммерческого агрегатора; реальный риск — практический: бан IP,
+> не более), осознанно решил всё равно подключить источник. Компромисс —
+> не фиксированные паузы между запросами (1 сек, как у остальных
+> скрейперов), а случайные "человеческие" (`HUMAN_DELAY_RANGE = (2.5,
+> 5.5)` сек) — это снижает нагрузку и заметность трафика, но не отменяет
+> сам факт игнорирования правила. area=97 — код региона "Узбекистан
+> целиком" в таксономии HH Group (проверено вживую 22.09.2026).
+
 ### Узбекистан и Армения — что ещё проверялось и отклонено
 
 По следам того же вопроса проверены и отклонены (22.09.2026):
-- **hh.uz** — та же платформа HH Group, что и Zarplata.ru/HH.ru, и HTML
-  тоже технически отдаётся (`/search/vacancy` возвращает настоящие
-  вакансии, не 403, как основной hh.ru). Но, в отличие от Zarplata.ru,
-  `robots.txt` для `User-agent: *` (не только Yandex) содержит
-  `Disallow: *?*` — блокирует ЛЮБОЙ URL с query-строкой для обычных ботов,
-  а поиск на этой платформе только через `?text=&area=` и не имеет
-  path-based альтернативы. Yandex у них в исключении (свой блок с
-  `Clean-param`, без общего `Disallow: *?*`) — то есть площадка сознательно
-  разрешает поиск в индексе только конкретно Яндексу, а не ботам вообще.
-  Решили не обходить это технически, как и не обходили `trudvsem.ru`.
 - **Ishkop.uz** — `robots.txt` явно запрещает `/vacansii*` для всех
   ботов, и этот путь — реальная, живая страница "все вакансии"
   (проверено: `GET /vacansii` -> 200, заголовок "Работа, вакансии в
