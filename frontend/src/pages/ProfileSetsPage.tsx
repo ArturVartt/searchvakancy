@@ -52,15 +52,15 @@ export function ProfileSetsPage() {
         </p>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
         {sets?.map((set) => (
           <article
             key={set.id}
-            className="flex flex-col gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+            className="flex flex-col gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 sm:gap-2 sm:rounded-xl sm:p-4"
           >
-            <h3 className="truncate text-base font-semibold text-[var(--color-text)]">{set.name}</h3>
+            <h3 className="truncate text-sm font-semibold text-[var(--color-text)] sm:text-base">{set.name}</h3>
 
-            <div className="flex flex-col gap-1 text-sm text-[var(--color-text-muted)]">
+            <div className="flex flex-col gap-1 text-xs text-[var(--color-text-muted)] sm:text-sm">
               {set.phone && <span>📱 {set.phone}</span>}
               {set.email && <span className="truncate">✉️ {set.email}</span>}
               {set.github_url && (
@@ -83,10 +83,10 @@ export function ProfileSetsPage() {
               </a>
             </div>
 
-            <div className="mt-2 flex gap-2 text-sm">
+            <div className="mt-1.5 flex gap-1.5 text-xs sm:mt-2 sm:gap-2 sm:text-sm">
               <Link
                 to={`/profile-sets/${set.id}/edit`}
-                className="flex-1 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-center hover:bg-[var(--color-surface-hover)]"
+                className="flex-1 rounded-lg border border-[var(--color-border)] px-2 py-1 text-center hover:bg-[var(--color-surface-hover)] sm:px-3 sm:py-1.5"
               >
                 Изменить
               </Link>
@@ -94,7 +94,7 @@ export function ProfileSetsPage() {
                 type="button"
                 onClick={() => handleDelete(set.id)}
                 disabled={deletingId === set.id}
-                className="rounded-lg border border-[var(--color-danger)] px-3 py-1.5 text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 disabled:opacity-50"
+                className="rounded-lg border border-[var(--color-danger)] px-2 py-1 text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 disabled:opacity-50 sm:px-3 sm:py-1.5"
               >
                 {deletingId === set.id ? "…" : "Удалить"}
               </button>
@@ -104,10 +104,10 @@ export function ProfileSetsPage() {
 
         <Link
           to="/profile-sets/new"
-          className="flex min-h-[140px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-[var(--color-border)] p-4 text-[var(--color-text-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+          className="flex min-h-[100px] flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-[var(--color-border)] p-3 text-[var(--color-text-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] sm:min-h-[140px] sm:rounded-xl sm:p-4"
         >
-          <span className="text-2xl leading-none">+</span>
-          <span className="text-sm font-medium">Добавить сет</span>
+          <span className="text-xl leading-none sm:text-2xl">+</span>
+          <span className="text-xs font-medium sm:text-sm">Добавить сет</span>
         </Link>
       </div>
 
