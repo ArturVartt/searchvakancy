@@ -12,13 +12,13 @@ Zarplata.ru, IT-Jobs.uz, VK, Staff.am, HH.uz — подробности по к�
 - ✅ **Phase 1** — Django-проект, модели БД (`Job`, `JobSource`, `UserJobFilter`,
   `JobNotification`), Celery + Redis, Django Channels (WebSocket `/ws/jobs/`),
   Docker Compose, базовый read-only REST API.
-- 🟡 **Phase 2** — восемь источников: HH.ru (`hh_scraper.py`, официальный API —
-  **закрыт HH с апреля 2026**, см. ниже), Habr Career (`habr_scraper.py`,
-  HTML career.habr.com/vacancies — публичного API нет), SuperJob
-  (`superjob_scraper.py`, официальный API, нужен бесплатный App ID),
-  Zarplata.ru (`zarplata_scraper.py`, HTML — та же платформа/база, что у
-  HH.ru, см. нюанс ниже), IT-Jobs.uz (`itjobsuz_scraper.py`, вакансии по
-  Узбекистану — HTML с inline JSON, публичного API нет), VK
+- 🟡 **Phase 2** — восемь источников: HH.ru (`hh_scraper.py`, HTML —
+  официальный API закрыт с апреля 2026, см. нюанс ниже), Habr Career
+  (`habr_scraper.py`, HTML career.habr.com/vacancies — публичного API нет),
+  SuperJob (`superjob_scraper.py`, официальный API, нужен бесплатный App
+  ID), Zarplata.ru (`zarplata_scraper.py`, HTML — та же платформа/база,
+  что у HH.ru, см. нюанс ниже), IT-Jobs.uz (`itjobsuz_scraper.py`,
+  вакансии по Узбекистану — HTML с inline JSON, публичного API нет), VK
   (`vk_scraper.py`, HTML team.vk.company — публичный корпоративный
   карьерный сайт холдинга VK, не путать с закрытым `vk.com/jobs`, см.
   нюанс ниже), Staff.am (`staffam_scraper.py`, вакансии по Армении —
@@ -174,14 +174,14 @@ docker compose exec backend python manage.py shell -c "from apps.jobs.tasks impo
 идти со второго и последующих прогонов (см. `is_first_sync` в
 `BaseScraper.run()` и `apps/jobs/tasks.py`).
 
-> **HH.ru** отдаёт `{"errors":[{"type":"forbidden"}]}` — и это **не баг и не
-> бан по IP дата-центра** (как можно было бы подумать). С апреля 2026 HH.ru
-> закрыл публичный `GET /vacancies` для всех неавторизованных запросов —
-> ключ теперь дают только работодателям/рекрутинговым сервисам с
-> верификацией аккаунта. Тот же 403 будет и с обычного домашнего интернета.
-> Источник: https://habr.com/ru/news/1069286/. Легального способа тянуть
-> вакансии с HH.ru без такого ключа сейчас нет — источник фактически
-> недоступен для этого проекта, пока не появится employer-ключ.
+> **HH.ru** — официальный API (`GET api.hh.ru/vacancies`) с апреля 2026
+> отдаёт `{"errors":[{"type":"forbidden"}]}` всем неавторизованным
+> запросам (не баг и не бан по IP дата-центра — ключ теперь дают только
+> работодателям/рекрутинговым сервисам с верификацией аккаунта, источник:
+> https://habr.com/ru/news/1069286/). `hh_scraper.py` больше не ходит в
+> API — парсит собственную поисковую HTML-страницу сайта (`data-qa`-атрибуты,
+> `<data value="...">` для зарплаты/опыта), та же платформа, что у
+> Zarplata.ru/HH.uz, см. нюанс ниже.
 
 > **Habr Career** публичного API не имеет — парсим HTML `career.habr.com/vacancies`
 > (BeautifulSoup). Два нюанса, на которые стоит обратить внимание при
@@ -336,8 +336,9 @@ docker compose exec backend python manage.py shell -c "from apps.jobs.tasks impo
 > Зарплату Staff.am почти никогда не публикует (как и VK/Habr).
 
 > **HH.uz** (`hhuz_scraper.py`) — та же платформа HH Group, что и
-> Zarplata.ru/HH.ru: HTML `/search/vacancy` отдаётся нормально (не 403,
-> как у закрытого с апреля 2026 hh.ru), разметка идентична Zarplata.ru.
+> Zarplata.ru/HH.ru: HTML `/search/vacancy` отдаётся нормально (закрыт с
+> апреля 2026 только официальный JSON API, не сама поисковая страница —
+> см. нюанс HH.ru выше), разметка идентична Zarplata.ru.
 > Между запросами страниц — случайные паузы вместо фиксированных, как у
 > остальных скрейперов. area=97 — код региона "Узбекистан целиком" в
 > таксономии HH Group (проверено вживую 22.09.2026).

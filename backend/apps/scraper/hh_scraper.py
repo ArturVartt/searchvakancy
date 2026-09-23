@@ -1,172 +1,179 @@
 """
-Скрейпер HH.ru через официальный публичный API (api.hh.ru/vacancies) —
-без HTML-парсинга и авторизации. Документация: https://api.hh.ru/openapi/
+Скрейпер HH.ru — с апреля 2026 официальный публичный API (api.hh.ru)
+закрыт для неавторизованных запросов ({"errors":[{"type":"forbidden"}]},
+не лечится сменой IP/прокси — см. https://habr.com/ru/news/1069286/).
+Вместо API парсим собственную поисковую HTML-страницу сайта — та же
+платформа, что и у Zarplata.ru/HH.uz (см. zarplata_scraper.py,
+hhuz_scraper.py), разметка идентична ("data-qa"-атрибуты, `<data
+value="...">` для зарплаты/опыта). Проверено вживую: `GET
+/search/vacancy?text=frontend&area=113` отдаёт 200 и настоящие вакансии
+(включая, например, "Сбер. IT" — крупные компании публикуют свои позиции
+на HH.ru как один из каналов размещения).
 
-ВАЖНО (обновлено 22.09.2026): с апреля 2026 HH.ru закрыл публичный метод
-GET /vacancies для всех неавторизованных запросов — теперь ключ доступа
-дают только работодателям и рекрутинговым сервисам, с верификацией
-аккаунта и модерацией заявки. {"errors":[{"type":"forbidden"}]} — это
-НЕ бан по IP дата-центра (как было раньше и как ещё предполагает код
-ниже) и не лечится сменой сервера/прокси: тот же 403 будет и с обычного
-домашнего интернета. Источник: https://habr.com/ru/news/1069286/
-
-Публичного легального способа тянуть вакансии с HH.ru без employer-ключа
-сейчас не существует. Код оставлен рабочим на случай, если у проекта
-появится такой ключ (тогда достаточно добавить заголовок Authorization),
-но по умолчанию этот скрейпер будет получать errors=1 при каждом прогоне —
-это ожидаемо, не баг.
+Между запросами страниц — случайные паузы (`HUMAN_DELAY_RANGE`), а не
+фиксированная 1 секунда, как у остальных скрейперов.
 """
 import logging
+import random
 import time
-from datetime import datetime
 from typing import Any
 
 import requests
-from django.utils.dateparse import parse_datetime
+from bs4 import BeautifulSoup
+from bs4.element import Tag
 
 from apps.jobs.models import Job
 
 from .base import BaseScraper
-from .parser import strip_html
+from .parser import is_frontend_relevant
 
 logger = logging.getLogger(__name__)
 
-# https://api.hh.ru/openapi/redoc#tag/Obshie-spravochniki/operation/get-areas -> 113 = Россия
-AREA_RUSSIA = 113
-
-# HH-специфичные словари -> наши choices. Соответствие приблизительное
-# (у HH нет прямого аналога "тип занятости" в терминах плана), но
-# достаточно для сортировки/фильтрации на списке вакансий.
-EMPLOYMENT_TO_JOB_TYPE = {
-    "full": Job.JobType.FULL_TIME,
-    "project": Job.JobType.CONTRACT,
-    "probation": Job.JobType.INTERNSHIP,
-    "volunteer": Job.JobType.FREELANCE,
-}
-SCHEDULE_TO_EMPLOYMENT_TYPE = {
-    "remote": Job.EmploymentType.REMOTE,
-    "fullDay": Job.EmploymentType.FULL_DAY,
-    "flexible": Job.EmploymentType.FULL_DAY,
-    "shift": Job.EmploymentType.FULL_DAY,
-}
-EXPERIENCE_TO_LEVEL = {
+EXPERIENCE_MAP = {
     "noExperience": Job.ExperienceLevel.JUNIOR,
     "between1And3": Job.ExperienceLevel.JUNIOR,
     "between3And6": Job.ExperienceLevel.MIDDLE,
     "moreThan6": Job.ExperienceLevel.SENIOR,
 }
-CURRENCY_MAP = {"RUR": Job.Currency.RUB, "RUB": Job.Currency.RUB, "USD": Job.Currency.USD, "EUR": Job.Currency.EUR}
+
+CURRENCY_MAP = {
+    "RUB": Job.Currency.RUB,
+    "USD": Job.Currency.USD,
+    "EUR": Job.Currency.EUR,
+}
+
+HUMAN_DELAY_RANGE = (2.5, 5.5)
 
 
 class HHScraper(BaseScraper):
     source_name = "HH.ru"
     source_url = "https://hh.ru"
 
-    api_base_url = "https://api.hh.ru/vacancies"
-    search_text = "Frontend OR Фронтенд OR Front-end"
-    per_page = 50
-    max_pages = 5  # per_page * max_pages = верхняя граница вакансий за один прогон
-    request_delay_seconds = 0.34  # HH просит не чаще ~3 запросов/сек
+    search_url = "https://hh.ru/search/vacancy"
+    search_keyword = "Frontend"
+    area = 113  # Россия целиком
+    max_pages = 5
 
     def __init__(self) -> None:
         self.session = requests.Session()
         self.session.headers.update(
             {
-                # HH банит дефолтные/пустые User-Agent — обязателен формат "App/Version (contact)"
                 "User-Agent": "SearchVakancy/1.0 (+https://github.com/searchvakancy)",
-                "Accept": "application/json",
+                "Accept": "text/html",
             }
         )
 
     def fetch_raw_jobs(self) -> list[dict[str, Any]]:
-        jobs: list[dict[str, Any]] = []
-        page = 0
-        total_pages = 1
+        items: list[dict[str, Any]] = []
+        for page in range(self.max_pages):
+            html = self._fetch_page(page)
+            cards = self._parse_cards(html)
+            if not cards:
+                break
+            items.extend(cards)
+            if page < self.max_pages - 1:
+                time.sleep(random.uniform(*HUMAN_DELAY_RANGE))
+        return items
 
-        while page < total_pages and page < self.max_pages:
-            response = self._get_with_retries(
-                params={
-                    "text": self.search_text,
-                    "search_field": "name",
-                    "area": AREA_RUSSIA,
-                    "per_page": self.per_page,
-                    "page": page,
-                }
-            )
-            payload = response.json()
-            jobs.extend(payload.get("items", []))
-            total_pages = payload.get("pages", 1)
-            page += 1
-            if page < total_pages and page < self.max_pages:
-                time.sleep(self.request_delay_seconds)
+    def _fetch_page(self, page: int) -> str:
+        params: dict[str, Any] = {
+            "text": self.search_keyword,
+            "search_field": "name",
+            "area": self.area,
+            "page": page,
+        }
+        response = self.session.get(self.search_url, params=params, timeout=10)
+        response.raise_for_status()
+        return response.text
 
-        return jobs
+    def _parse_cards(self, html: str) -> list[dict[str, Any]]:
+        soup = BeautifulSoup(html, "lxml")
+        parsed = (self._parse_one_card(card) for card in soup.select('[data-qa="vacancy-serp__vacancy"]'))
+        return [item for item in parsed if item is not None]
 
-    def _get_with_retries(self, params: dict[str, Any], retries: int = 3) -> requests.Response:
-        last_exc: Exception | None = None
-        for attempt in range(retries):
-            try:
-                response = self.session.get(self.api_base_url, params=params, timeout=10)
-                if response.status_code in (429, 503):
-                    wait = 2**attempt
-                    logger.warning(
-                        "HH API вернул %s, жду %sс (попытка %s/%s)",
-                        response.status_code,
-                        wait,
-                        attempt + 1,
-                        retries,
-                    )
-                    time.sleep(wait)
-                    continue
-                response.raise_for_status()
-                return response
-            except requests.RequestException as exc:
-                last_exc = exc
-                time.sleep(2**attempt)
-        assert last_exc is not None
-        raise last_exc
+    def _parse_one_card(self, card: Tag) -> dict[str, Any] | None:
+        title_el = card.select_one('[data-qa="serp-item__title-text"]')
+        link_el = card.select_one('[data-qa="serp-item__title"]')
+        if title_el is None or link_el is None:
+            return None
+        title = title_el.get_text(strip=True)
+        href = link_el.get("href", "")
 
-    def normalize_job(self, raw: dict[str, Any]) -> dict[str, Any]:
-        salary = raw.get("salary") or {}
-        employer = raw.get("employer") or {}
-        area = raw.get("area") or {}
-        snippet = raw.get("snippet") or {}
-        schedule = raw.get("schedule") or {}
-        employment = raw.get("employment") or {}
-        experience = raw.get("experience") or {}
+        skills_hint = card.get_text(" ", strip=True)
+        if not is_frontend_relevant(title, skills_hint):
+            return None
 
-        description = " ".join(
-            filter(
-                None,
-                [
-                    strip_html(snippet.get("requirement")),
-                    strip_html(snippet.get("responsibility")),
-                ],
-            )
+        external_id = self._external_id(href)
+        if external_id is None:
+            return None
+
+        company_el = card.select_one('[data-qa="vacancy-serp__vacancy-employer-text"]')
+        location_el = card.select_one('[data-qa="vacancy-serp__vacancy-address"]')
+
+        salary_from, salary_to, currency = self._parse_salary(card)
+        experience_level = self._parse_experience(card)
+        employment_type = (
+            Job.EmploymentType.REMOTE if card.select_one('[data-qa="vacancy-label-work-schedule-remote"]') else ""
         )
 
-        posted_at: datetime | None = None
-        if raw.get("published_at"):
-            posted_at = parse_datetime(raw["published_at"])
+        description_parts = [
+            el.get_text(" ", strip=True)
+            for el in card.select(
+                '[data-qa="vacancy-serp__vacancy_snippet_requirement"], '
+                '[data-qa="vacancy-serp__vacancy_snippet_responsibility"]'
+            )
+        ]
 
         return {
-            "external_id": str(raw["id"]),
-            "title": raw.get("name", ""),
-            "company": employer.get("name", ""),
-            "description": description,
-            "salary_from": salary.get("from"),
-            "salary_to": salary.get("to"),
-            "currency": CURRENCY_MAP.get(salary.get("currency"), Job.Currency.RUB),
-            "location": area.get("name", ""),
-            "job_type": EMPLOYMENT_TO_JOB_TYPE.get(employment.get("id"), ""),
-            "experience_level": EXPERIENCE_TO_LEVEL.get(experience.get("id"), ""),
-            "employment_type": SCHEDULE_TO_EMPLOYMENT_TYPE.get(schedule.get("id"), ""),
-            # HH отдаёт key_skills только в деталях вакансии (GET /vacancies/{id}),
-            # не в списке поиска — дотягивать по одному было бы N+1 запросов.
-            # Оставляем пустым в PoC; можно добавить опциональное обогащение позже.
+            "external_id": external_id,
+            "title": title,
+            "company": company_el.get_text(strip=True) if company_el else "",
+            "description": " ".join(description_parts),
+            "salary_from": salary_from,
+            "salary_to": salary_to,
+            "currency": currency,
+            "location": location_el.get_text(strip=True) if location_el else "",
+            "job_type": "",
+            "experience_level": experience_level,
+            "employment_type": employment_type,
             "required_skills": [],
             "nice_to_have": [],
-            "url": raw.get("alternate_url", ""),
-            "posted_at": posted_at,
+            "url": href if href.startswith("http") else f"https://hh.ru{href}",
+            "posted_at": None,  # список не отдаёт дату публикации отдельным полем
             "is_active": True,
         }
+
+    @staticmethod
+    def _external_id(href: str) -> str | None:
+        # href вида "https://hh.ru/vacancy/137527751?query=..."
+        path = href.split("?", 1)[0]
+        vacancy_id = path.rsplit("/", 1)[-1]
+        return vacancy_id if vacancy_id.isdigit() else None
+
+    @staticmethod
+    def _parse_salary(card: Tag) -> tuple[int | None, int | None, str]:
+        """См. ту же логику в zarplata_scraper.py — идентичная разметка."""
+        amounts: list[int] = []
+        currency = Job.Currency.RUB
+        for data_el in card.find_all("data"):
+            value = data_el.get("value", "")
+            if value in CURRENCY_MAP:
+                currency = CURRENCY_MAP[value]
+            elif value.isdigit():
+                amounts.append(int(value))
+        if len(amounts) >= 2:
+            return amounts[0], amounts[1], currency
+        if len(amounts) == 1:
+            return amounts[0], None, currency
+        return None, None, currency
+
+    @staticmethod
+    def _parse_experience(card: Tag) -> str:
+        for key, level in EXPERIENCE_MAP.items():
+            if card.select_one(f'[data-qa="vacancy-serp__vacancy-work-experience-{key}"]'):
+                return level
+        return ""
+
+    def normalize_job(self, raw: dict[str, Any]) -> dict[str, Any]:
+        # _parse_one_card уже собрал финальный словарь под поля Job.
+        return raw
