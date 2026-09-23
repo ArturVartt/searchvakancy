@@ -25,6 +25,17 @@ FRONTEND_KEYWORDS = (
     "next.js",
 )
 
+# Если встречается любое из этих слов — вакансия отсеивается, даже если
+# рядом упоминается React/Vue/etc: владелец проекта не хочет видеть
+# full-stack позиции в ленте "Frontend". Проверяем три написания
+# ("fullstack"/"full-stack"/"full stack"), потому что "fullstack" не
+# матчится как подстрока в "full-stack"/"full stack" из-за разделителя.
+FRONTEND_EXCLUDE_KEYWORDS = (
+    "fullstack",
+    "full-stack",
+    "full stack",
+)
+
 
 def strip_html(html: str | None) -> str:
     """Убрать теги (в т.ч. <highlighttext> у HH) и лишние пробелы."""
@@ -36,4 +47,6 @@ def strip_html(html: str | None) -> str:
 
 def is_frontend_relevant(title: str, description: str = "") -> bool:
     haystack = f"{title} {description}".lower()
+    if any(keyword in haystack for keyword in FRONTEND_EXCLUDE_KEYWORDS):
+        return False
     return any(keyword in haystack for keyword in FRONTEND_KEYWORDS)

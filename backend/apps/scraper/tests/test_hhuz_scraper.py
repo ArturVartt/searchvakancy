@@ -29,30 +29,27 @@ def _run_with_single_page(html: str):
 def test_run_parses_real_markup_and_filters_off_topic_card():
     stats = _run_with_single_page(load_fixture_html())
 
-    # Из 3 карточек одна — не про frontend (менеджер по продажам).
-    assert stats["fetched"] == 2
-    assert stats["created"] == 2
+    # Из 3 карточек проходят: одна фронтенд-вакансия. Отсеиваются две —
+    # "Менеджер по продажам" (не про frontend) и "Fullstack-разработчик"
+    # (исключена по FRONTEND_EXCLUDE_KEYWORDS, несмотря на React/Node.js
+    # в сниппете — см. test_fullstack_titled_job_is_excluded ниже).
+    assert stats["fetched"] == 1
+    assert stats["created"] == 1
     assert stats["errors"] == 0
-    assert Job.objects.count() == 2
+    assert Job.objects.count() == 1
     assert not Job.objects.filter(external_id="136900001").exists()
+    assert not Job.objects.filter(external_id="137527751").exists()
     assert JobSource.objects.filter(name="HH.uz", last_sync__isnull=False).exists()
 
 
 @pytest.mark.django_db
-def test_uzs_salary_and_absolute_url():
+def test_fullstack_titled_job_is_excluded():
     _run_with_single_page(load_fixture_html())
 
-    job = Job.objects.get(external_id="137527751")
-    assert job.title == "Fullstack-разработчик"
-    assert job.company == "ООО FAIR-METALL"
-    assert job.location == "Ташкент, 2-й Джаркурганский проезд, 22А"
-    assert job.experience_level == Job.ExperienceLevel.JUNIOR  # between1And3
-    assert job.salary_from == 8000000
-    assert job.salary_to is None
-    assert job.currency == Job.Currency.UZS
-    # href в фикстуре уже абсолютный (как реально отдаёт hh.uz, в отличие
-    # от относительного у zarplata.ru) — url должен взяться как есть.
-    assert job.url == "https://hh.uz/vacancy/137527751?query=frontend&hhtmFrom=vacancy_search_list"
+    # "Fullstack-разработчик" содержит и "React, Node.js" в сниппете, и
+    # формально попал бы под FRONTEND_KEYWORDS ("react") — но
+    # FRONTEND_EXCLUDE_KEYWORDS ("fullstack") отсеивает его первым.
+    assert not Job.objects.filter(external_id="137527751").exists()
 
 
 @pytest.mark.django_db
@@ -73,6 +70,6 @@ def test_run_is_idempotent_on_rerun():
     stats = _run_with_single_page(html)
 
     assert stats["created"] == 0
-    assert stats["updated"] == 2
+    assert stats["updated"] == 1
     assert stats["is_first_sync"] is False
-    assert Job.objects.count() == 2
+    assert Job.objects.count() == 1

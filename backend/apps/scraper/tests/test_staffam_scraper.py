@@ -42,17 +42,31 @@ def test_run_filters_irrelevant_and_saves_relevant():
     stats = _run_with_fixtures()
 
     # 4 detail-страницы забраны (banner itemType=0 пропущен на этапе
-    # списка), но отсеиваются две: "Senior DevOps Engineer" (id 1003, вообще
-    # без фронтенд-слов) и "Senior .Net Engineer" (id 1004 — TypeScript/
+    # списка), но отсеиваются три: "Senior DevOps Engineer" (id 1003, вообще
+    # без фронтенд-слов), "Senior .Net Engineer" (id 1004 — TypeScript/
     # Angular упомянуты только в описании как "будет плюсом", в skills их
-    # нет — см. докстринг модуля про этот конкретный ложный срабатывание).
-    assert stats["fetched"] == 2
-    assert stats["created"] == 2
+    # нет) и "Full Stack Developer" (id 1002 — исключена по
+    # FRONTEND_EXCLUDE_KEYWORDS несмотря на React в hard skills, см.
+    # test_fullstack_titled_job_is_excluded ниже).
+    assert stats["fetched"] == 1
+    assert stats["created"] == 1
     assert stats["errors"] == 0
-    assert Job.objects.count() == 2
+    assert Job.objects.count() == 1
+    assert not Job.objects.filter(external_id="1002").exists()
     assert not Job.objects.filter(external_id="1003").exists()
     assert not Job.objects.filter(external_id="1004").exists()
     assert JobSource.objects.filter(name="Staff.am", last_sync__isnull=False).exists()
+
+
+@pytest.mark.django_db
+def test_fullstack_titled_job_is_excluded():
+    _run_with_fixtures()
+
+    # "Full Stack Developer" (id 1002) содержит "React"/"Node.js" в
+    # hard skills и формально попал бы под FRONTEND_KEYWORDS — но
+    # FRONTEND_EXCLUDE_KEYWORDS ("full stack" в заголовке) отсеивает его
+    # первым.
+    assert not Job.objects.filter(external_id="1002").exists()
 
 
 @pytest.mark.django_db
@@ -75,28 +89,11 @@ def test_frontend_titled_job_fields():
 
 
 @pytest.mark.django_db
-def test_generic_title_job_matched_via_hard_skills_and_remote():
-    _run_with_fixtures()
-
-    # "Full Stack Developer" не содержит фронтенд-ключевых слов в
-    # заголовке — прошёл только благодаря is_frontend_relevant() по
-    # тегированным hard skills (type=2 "React"), а не по тексту описания
-    # (см. докстринг модуля про ложные срабатывания на "упомянуто вскользь").
-    job = Job.objects.get(external_id="1002")
-    assert job.company == "Digitain"
-    assert job.experience_level == Job.ExperienceLevel.MIDDLE
-    assert job.employment_type == Job.EmploymentType.REMOTE  # is_remote=true
-    assert job.salary_from == 400000
-    assert job.salary_to == 600000
-    assert job.required_skills == ["React", "Node.js"]
-
-
-@pytest.mark.django_db
 def test_run_is_idempotent_on_rerun():
     _run_with_fixtures()
     stats = _run_with_fixtures()
 
     assert stats["created"] == 0
-    assert stats["updated"] == 2
+    assert stats["updated"] == 1
     assert stats["is_first_sync"] is False
-    assert Job.objects.count() == 2
+    assert Job.objects.count() == 1
