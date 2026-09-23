@@ -38,7 +38,7 @@ export function NotificationsPage() {
         </p>
       )}
 
-      <ul className="grid gap-2">
+      <ul className="grid grid-cols-1 gap-2">
         {data?.results.map((n) => (
           <li
             key={n.id}
