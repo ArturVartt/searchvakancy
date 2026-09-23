@@ -1,9 +1,9 @@
 # SearchVakancy
 
 Агрегатор вакансий Frontend-разработчиков (HH.ru, Habr Career, SuperJob,
-Zarplata.ru, IT-Jobs.uz, VK, Staff.am, HH.uz — подробности по каждому
-источнику см. "Скрейпинг вакансий" ниже) с real-time обновлениями и
-уведомлениями в Telegram.
+Zarplata.ru, IT-Jobs.uz, VK, Staff.am, HH.uz, канал @remote_frontend_jobs
+в Telegram — подробности по каждому источнику см. "Скрейпинг вакансий"
+ниже) с real-time обновлениями и уведомлениями в Telegram.
 
 Полный план разработки: см. историю чата / документ плана. Статус по фазам — ниже.
 
@@ -12,7 +12,7 @@ Zarplata.ru, IT-Jobs.uz, VK, Staff.am, HH.uz — подробности по к�
 - ✅ **Phase 1** — Django-проект, модели БД (`Job`, `JobSource`, `UserJobFilter`,
   `JobNotification`), Celery + Redis, Django Channels (WebSocket `/ws/jobs/`),
   Docker Compose, базовый read-only REST API.
-- 🟡 **Phase 2** — восемь источников: HH.ru (`hh_scraper.py`, HTML —
+- 🟡 **Phase 2** — девять источников: HH.ru (`hh_scraper.py`, HTML —
   официальный API закрыт с апреля 2026, см. нюанс ниже), Habr Career
   (`habr_scraper.py`, HTML career.habr.com/vacancies — публичного API нет),
   SuperJob (`superjob_scraper.py`, официальный API, нужен бесплатный App
@@ -23,10 +23,13 @@ Zarplata.ru, IT-Jobs.uz, VK, Staff.am, HH.uz — подробности по к�
   карьерный сайт холдинга VK, не путать с закрытым `vk.com/jobs`, см.
   нюанс ниже), Staff.am (`staffam_scraper.py`, вакансии по Армении —
   HTML с embedded JSON `__NEXT_DATA__`, публичного API нет, см. нюанс
-  ниже) и HH.uz (`hhuz_scraper.py`, вакансии по Узбекистану, та же
-  платформа HH Group, что у Zarplata.ru, см. нюанс ниже).
-  `BaseScraper` — общий контракт, `run_all_scrapers` по расписанию каждые
-  30 мин через Celery Beat.
+  ниже), HH.uz (`hhuz_scraper.py`, вакансии по Узбекистану, та же
+  платформа HH Group, что у Zarplata.ru, см. нюанс ниже) и Telegram-канал
+  @remote_frontend_jobs (`tg_remote_frontend_scraper.py`, публичное
+  веб-превью `t.me/s/...`, см. нюанс ниже — единственный TG-источник из
+  ~47 проверенных, у остальных нестабильный формат постов вперемешку с
+  рекламой). `BaseScraper` — общий контракт, `run_all_scrapers` по
+  расписанию каждые 30 мин через Celery Beat.
 - ✅ **Phase 3** — Telegram-бот (`apps/telegram_bot`): команды `/start`,
   `/subscribe`, `/unsubscribe`, `/latest`, `/filters`, `/trending`; Celery-таск
   `notify_users_for_jobs`, который при появлении новых вакансий проверяет
@@ -162,7 +165,7 @@ celery -A config beat -l info
 `CELERY_BEAT_SCHEDULE` в `config/settings/base.py`) Celery Beat запускает
 `apps.jobs.tasks.run_all_scrapers`.
 
-Запустить скрейпер вручную (`hh`, `habr`, `superjob`, `zarplata`, `itjobsuz`, `vk`, `staffam` или `hhuz`):
+Запустить скрейпер вручную (`hh`, `habr`, `superjob`, `zarplata`, `itjobsuz`, `vk`, `staffam`, `hhuz` или `tgremotefrontend`):
 
 ```bash
 docker compose exec backend python manage.py shell -c "from apps.jobs.tasks import run_scraper; print(run_scraper('habr'))"
@@ -342,6 +345,45 @@ docker compose exec backend python manage.py shell -c "from apps.jobs.tasks impo
 > Между запросами страниц — случайные паузы вместо фиксированных, как у
 > остальных скрейперов. area=97 — код региона "Узбекистан целиком" в
 > таксономии HH Group (проверено вживую 22.09.2026).
+
+### Telegram-канал @remote_frontend_jobs — `tg_remote_frontend_scraper.py`
+
+Владелец проекта попросил проверить, можно ли собирать вакансии из
+Telegram-каналов, и дал список из 47 конкретных каналов на проверку
+(23.09.2026). Итог: у `t.me` вообще нет `robots.txt` (404) — ограничений
+на скрейпинг публичного веб-превью `t.me/s/<канал>` нет, оно отдаётся без
+бота, логина и API-ключа. Но у подавляющего большинства из 47 каналов
+контент — вперемешку разные форматы вакансий, реклама других каналов,
+реклама сторонних сервисов (курсы, проверка резюме), без единой стабильной
+разметки. 6 каналов оказались про крипту/web3 (не в теме проекта), 8 —
+приватные/недоступные без вступления, остальные общие IT-каналы, где
+фронтенд теряется среди backend/QA/PM-вакансий.
+
+Единственное исключение — **@remote_frontend_jobs**: судя по стилю,
+ведётся ботом-агрегатором (репостит с Upwork/Workable/Jobicy и похожих),
+одна вакансия на пост, строгий шаблон `<b>Label</b>: значение<br/>`
+(Published time / Company name / Title / Salary — не всегда / Grades /
+Job description / Location / Anywhere / Remote / прямая ссылка "Apply" /
+хэштеги) — ни одного рекламного поста в проверенной выборке. Разметка
+"Tags" в шаблоне разорвана `<br>` сразу после подписи
+(`<b>Tags</b>:<br/><a>#frontend</a>...`) — общий построчный парсер полей
+увидел бы там пустое значение, поэтому хэштеги вытаскиваются отдельным
+проходом по `a[href^="?q=%23"]`, независимо от остальных полей.
+
+Отдаёт только последние ~20 постов без пагинации назад — при прогоне раз
+в 30 минут этого с запасом достаточно (канал публикует ~1 вакансию/день).
+Зарплата — свободный текст ("$50,000 - $70,000 per year", "Up to $3200 /
+month") — парсится регэкспом по первым 1-2 числам, best-effort. Grades —
+диапазон через запятую ("senior, senior+") — берётся МИНИМАЛЬНЫЙ уровень
+диапазона. `url` карточки ведёт на прямую ссылку "Apply" из поста (то,
+что реально нужно открыть), а не на сам пост в Telegram.
+
+На фронтенде вакансии из этого источника выделены синей рамкой карточки
+и бейджем с иконкой Telegram — `isTelegramSource()`
+(`frontend/src/lib/telegramSource.ts`) определяет источник по суффиксу
+`"(TG)"` в имени (source_name = `"Remote Frontend Jobs (TG)"`), а не
+хардкодом одного конкретного имени, так что следующий TG-источник (если
+появится) подхватит оформление автоматически.
 
 ### Узбекистан и Армения — что ещё проверялось и отклонено
 

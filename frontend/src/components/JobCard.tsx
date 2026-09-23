@@ -5,6 +5,8 @@ import { useAuth } from "../lib/AuthContext";
 import { api } from "../lib/api";
 import { isJobViewed, isPostedWithinLastDay, markJobViewed } from "../lib/viewedJobs";
 import { sourceBadge } from "../lib/countryBadge";
+import { isTelegramSource } from "../lib/telegramSource";
+import { TelegramIcon } from "./TelegramIcon";
 
 interface JobCardProps {
   job: Job;
@@ -18,6 +20,7 @@ export function JobCard({ job, onFavoriteChange, highlight }: JobCardProps) {
   const [viewed, setViewed] = useState(() => isJobViewed(job.id));
   const isUnseenAndNew = !viewed && isPostedWithinLastDay(job.posted_at);
   const badge = sourceBadge(job.source);
+  const isTG = isTelegramSource(job.source);
 
   function handleOpen() {
     markJobViewed(job.id);
@@ -43,7 +46,11 @@ export function JobCard({ job, onFavoriteChange, highlight }: JobCardProps) {
   return (
     <article
       className={`rounded-lg border p-2.5 transition-colors sm:rounded-xl sm:p-4 ${
-        highlight ? "border-[var(--color-accent)]" : "border-[var(--color-border)]"
+        isTG
+          ? "border-blue-400 dark:border-blue-500"
+          : highlight
+            ? "border-[var(--color-accent)]"
+            : "border-[var(--color-border)]"
       } ${isUnseenAndNew ? "ring-2 ring-yellow-400" : ""} bg-[var(--color-surface)]`}
     >
       <div className="flex items-start justify-between gap-2 sm:gap-3">
@@ -106,6 +113,12 @@ export function JobCard({ job, onFavoriteChange, highlight }: JobCardProps) {
 
       <div className="mt-1.5 flex items-center justify-between text-[11px] text-[var(--color-text-muted)] sm:mt-3 sm:text-xs">
         <span className="inline-flex items-center gap-1 sm:gap-1.5">
+          {isTG && (
+            <span className="inline-flex items-center gap-0.5 rounded bg-blue-100 px-1 py-0.5 font-semibold text-blue-600 dark:bg-blue-950 dark:text-blue-300">
+              <TelegramIcon className="h-2.5 w-2.5" />
+              TG
+            </span>
+          )}
           {badge && (
             <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${badge.className}`}>
               {badge.label}
