@@ -21,7 +21,7 @@ function JobCardSkeleton() {
 export function JobList({ jobs, onFavoriteChange, highlightIds, emptyMessage }: JobListProps) {
   if (jobs === null) {
     return (
-      <div className="grid gap-3">
+      <div className="grid gap-2 sm:gap-3">
         {Array.from({ length: 6 }, (_, i) => (
           <JobCardSkeleton key={i} />
         ))}
@@ -38,7 +38,7 @@ export function JobList({ jobs, onFavoriteChange, highlightIds, emptyMessage }: 
   }
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-2 sm:gap-3">
       {jobs.map((job) => (
         <JobCard
           key={job.id}
