@@ -10,6 +10,7 @@ from .staffam_scraper import StaffAmScraper
 from .superjob_scraper import SuperJobScraper
 from .tg_forfrontend_scraper import TgForFrontendScraper
 from .tg_remote_frontend_scraper import TgRemoteFrontendScraper
+from .uzum_scraper import UzumScraper
 from .vk_scraper import VKScraper
 from .zarplata_scraper import ZarplataScraper
 
@@ -24,4 +25,5 @@ SCRAPERS = {
     "hhuz": HHUzScraper,
     "tgremotefrontend": TgRemoteFrontendScraper,
     "tgforfrontend": TgForFrontendScraper,
+    "uzum": UzumScraper,
 }

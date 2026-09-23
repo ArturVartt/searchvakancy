@@ -1,7 +1,7 @@
 # SearchVakancy
 
 Агрегатор вакансий Frontend-разработчиков (HH.ru, Habr Career, SuperJob,
-Zarplata.ru, IT-Jobs.uz, VK, Staff.am, HH.uz, Telegram-каналы
+Zarplata.ru, IT-Jobs.uz, VK, Staff.am, HH.uz, Uzum, Telegram-каналы
 @remote_frontend_jobs и @forfrontend — подробности по каждому источнику
 см. "Скрейпинг вакансий" ниже) с real-time обновлениями и уведомлениями
 в Telegram.
@@ -13,7 +13,7 @@ Zarplata.ru, IT-Jobs.uz, VK, Staff.am, HH.uz, Telegram-каналы
 - ✅ **Phase 1** — Django-проект, модели БД (`Job`, `JobSource`, `UserJobFilter`,
   `JobNotification`), Celery + Redis, Django Channels (WebSocket `/ws/jobs/`),
   Docker Compose, базовый read-only REST API.
-- 🟡 **Phase 2** — десять источников: HH.ru (`hh_scraper.py`, HTML —
+- 🟡 **Phase 2** — одиннадцать источников: HH.ru (`hh_scraper.py`, HTML —
   официальный API закрыт с апреля 2026, см. нюанс ниже), Habr Career
   (`habr_scraper.py`, HTML career.habr.com/vacancies — публичного API нет),
   SuperJob (`superjob_scraper.py`, официальный API, нужен бесплатный App
@@ -30,7 +30,11 @@ Zarplata.ru, IT-Jobs.uz, VK, Staff.am, HH.uz, Telegram-каналы
   и @forfrontend (`tg_forfrontend_scraper.py`), оба через публичное
   веб-превью `t.me/s/...`, см. нюанс ниже (из ~47 проверенных каналов
   прижились только эти два — у остальных нестабильный формат постов
-  вперемешку с рекламой, либо репост уже собираемых в проекте источников).
+  вперемешку с рекламой, либо репост уже собираемых в проекте источников),
+  и Uzum (`uzum_scraper.py`, HTML people.uzum.com — карьерный портал
+  крупнейшей e-commerce/fintech-экосистемы Узбекистана, см. нюанс ниже;
+  на момент добавления (23.09.2026) технически рабочий, но фронтенд-
+  вакансий там сейчас 0 — добавлен впрок).
   `BaseScraper` — общий контракт, `run_all_scrapers` по расписанию каждые
   30 мин через Celery Beat.
 - ✅ **Phase 3** — Telegram-бот (`apps/telegram_bot`): команды `/start`,
@@ -192,7 +196,7 @@ celery -A config beat -l info
 `CELERY_BEAT_SCHEDULE` в `config/settings/base.py`) Celery Beat запускает
 `apps.jobs.tasks.run_all_scrapers`.
 
-Запустить скрейпер вручную (`hh`, `habr`, `superjob`, `zarplata`, `itjobsuz`, `vk`, `staffam`, `hhuz`, `tgremotefrontend` или `tgforfrontend`):
+Запустить скрейпер вручную (`hh`, `habr`, `superjob`, `zarplata`, `itjobsuz`, `vk`, `staffam`, `hhuz`, `tgremotefrontend`, `tgforfrontend` или `uzum`):
 
 ```bash
 docker compose exec backend python manage.py shell -c "from apps.jobs.tasks import run_scraper; print(run_scraper('habr'))"
@@ -443,6 +447,47 @@ month") — парсится регэкспом по первым 1-2 числа
 в проекте напрямую (HH.ru/VK/Habr Career). Добавление создало бы
 визуальные дубли одних и тех же вакансий под разными источниками вместо
 новых данных — решено не добавлять.
+
+### Uzum (`uzum_scraper.py`) и другие "бигтехи" Узбекистана
+
+Владелец проекта попросил отдельно поискать крупные узбекские компании
+("бигтехи") с собственными карьерными разделами — по аналогии с
+`team.vk.company` (23.09.2026). Проверены Uzum, Payme, Anor Bank.
+
+> **Uzum** (`people.uzum.com`) — карьерный портал крупнейшей в Узбекистане
+> e-commerce/fintech-экосистемы (Uzum Market, Uzum Bank, Uzum Nasiya,
+> Uzum Tezkor и др.). `robots.txt` открытый (`Allow: /`, запрещены только
+> `/api/` и `/monitoring/`), обычный серверно-рендеренный HTML без
+> __NEXT_DATA__/__NUXT__. Список вакансий (`/career/ru/vacancies`)
+> фильтруется на клиенте — простой GET отдаёт только ~15 последних
+> вакансий, `?query=frontend` в URL ни на что не влияет. Решение —
+> `sitemap.xml` (есть в `robots.txt`), который перечисляет ВСЕ текущие
+> открытые вакансии напрямую по ID (64 на момент проверки, `/career/ru/`
+> и `/career/uz/` — дубли одних и тех же ID на двух языках, берём только
+> `ru`). Заголовок — из `<title>` (до `" | Uzum People"`), не завязан на
+> хрупкий CSS-класс. "Город • Формат • Опыт" — в отдельном `<p>` через
+> буллет, опыт бакетизируется по числу лет так же, как у HH/Zarplata
+> (без опыта/до 3 лет -> junior, 3–6 -> middle, 6+ -> senior). Кнопка
+> "Откликнуться" — JS-виджет (`<button>`, не `<a>`), прямого apply-URL
+> нет — `url` ведёт на саму страницу вакансии. Зарплату сайт не
+> публикует. **На момент добавления (23.09.2026) среди всех 64 открытых
+> вакансий не было ни одной фронтенд-позиции** (сплошь Java/Go/QA/Data/
+> DevOps) — источник всё равно добавлен: технически он на голову
+> надёжнее остальных проверенных "бигтехов" (см. ниже) и сам подхватит
+> фронтенд-вакансии, когда они появятся — решение владельца проекта.
+
+Остальные два кандидата отклонены:
+- **Payme** (`career.payme.uz`) — чистое клиентское Angular-приложение
+  (`data-critters-container`, пустой HTML-шелл без единой ссылки на
+  вакансию в исходном коде) — без headless-браузера не скрейпить, тот
+  же случай, что и с GetMatch. Альтернативный URL `blog.payme.uz/vakansii/`
+  оказался не списком вакансий, а обычным корпоративным блогом с постами,
+  среди которых просто один тег "вакансии" — не структурированные данные.
+- **Anor Bank** (`anorbank.uz`, Bitrix CMS) — `robots.txt` явно
+  запрещает параметр пагинации (`Disallow: /*?*PAGEN_=`), доступна
+  только первая страница (8 из ~22 вакансий); на ней фронтенда тоже нет
+  (Android/iOS/Java/QA/ML) — добавлять источник с доступом только к
+  трети данных и без единой релевантной вакансии сочли нецелесообразным.
 
 ### Узбекистан и Армения — что ещё проверялось и отклонено
 
