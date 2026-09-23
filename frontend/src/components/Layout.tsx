@@ -101,6 +101,9 @@ export function Layout() {
                 <NavLink to="/notifications" className={navLinkClass}>
                   Уведомления
                 </NavLink>
+                <NavLink to="/profile-sets" className={navLinkClass}>
+                  Сеты профиля
+                </NavLink>
               </>
             )}
           </nav>

@@ -49,6 +49,18 @@ Zarplata.ru, IT-Jobs.uz, VK, Staff.am, HH.uz, Telegram-каналы
 - ✅ **Phase 6** — интеграция и прод-готовность: структурное логирование,
   `docker-compose.prod.yml` (daphne + whitenoise + nginx reverse-proxy на
   едином origin, без CORS), фикс `SECRET_KEY`/статики в проде.
+- ✅ **Phase 7** — Сеты профиля (`apps/profiles`): именованные наборы
+  контактов + резюме (PDF/DOC/DOCX), чтобы удобно хранить несколько разных
+  резюме и быстро выбирать нужное при отклике. CRUD через
+  `/api/profile-sets/`, own-only (виден и редактируется только владельцем).
+  На фронтенде — отдельная страница `/profile-sets` (список карточек +
+  плашка "Добавить сет") и форма создания/редактирования. Попутно
+  вскрылась и исправлена реальная дыра: `config/urls.py` отдавал
+  `/media/...` только при `DEBUG=True` — на проде (DEBUG=False) nginx
+  честно проксировал `/media/` на backend, но Django там не регистрировал
+  для этого пути ни один URL, и любой файл резюме отдавал бы 404. До
+  сеты профиля в проекте вообще не было своих файлов — раньше это было
+  незаметно.
 
 ## Стек
 
@@ -505,6 +517,9 @@ Telegram) — он не связан с веб-аккаунтом, зареги�
 - `GET/POST /api/jobs/filters/`, `GET/PATCH/DELETE /api/jobs/filters/<id>/` — свои фильтры
 - `POST/DELETE /api/jobs/<id>/favorite/`, `GET /api/jobs/favorites/` — избранное
 - `GET /api/jobs/notifications/`, `POST /api/jobs/notifications/<id>/mark_read/`
+- `GET/POST /api/profile-sets/`, `GET/PATCH/DELETE /api/profile-sets/<id>/` — свои
+  сеты профиля (см. Phase 7); `POST`/`PATCH` только `multipart/form-data`
+  (загрузка файла резюме), `PATCH` без поля `resume` файл не трогает.
 
 Есть демо-пользователь для ручных проверок через `/api/docs/` (кнопка Authorize,
 схема `Token`): `demo` / `demo12345`.

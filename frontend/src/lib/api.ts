@@ -5,6 +5,8 @@ import type {
   JobNotification,
   JobSource,
   Paginated,
+  ProfileSet,
+  ProfileSetInput,
   Stats,
   UserJobFilter,
 } from "../types";
@@ -62,6 +64,39 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const message =
       (body && typeof body === "object" && ("detail" in body ? String((body as { detail: unknown }).detail) : JSON.stringify(body))) ||
       response.statusText;
+    throw new ApiError(response.status, message, body);
+  }
+
+  return body as T;
+}
+
+// Отдельно от request(): та принудительно ставит Content-Type: application/json
+// и делает JSON.stringify(body) — для файлов нужен multipart/form-data,
+// который браузер сам выставит с правильным boundary, если Content-Type
+// вообще не трогать руками.
+async function requestMultipart<T>(path: string, method: string, data: object): Promise<T> {
+  const token = getToken();
+  const headers = new Headers();
+  if (token) headers.set("Authorization", `Token ${token}`);
+
+  const formData = new FormData();
+  for (const [key, value] of Object.entries(data)) {
+    if (value === null || value === undefined) continue;
+    formData.set(key, value as string | File);
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, { method, headers, body: formData });
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  const isJson = response.headers.get("content-type")?.includes("application/json");
+  const body = isJson ? await response.json().catch(() => null) : null;
+
+  if (!response.ok) {
+    const message =
+      (body && typeof body === "object" && JSON.stringify(body)) || response.statusText;
     throw new ApiError(response.status, message, body);
   }
 
@@ -142,5 +177,22 @@ export const api = {
   },
   markNotificationRead(id: number): Promise<JobNotification> {
     return request(`/api/jobs/notifications/${id}/mark_read/`, { method: "POST" });
+  },
+
+  // --- сеты профиля (нужен токен) -----------------------------------------
+  listProfileSets(): Promise<Paginated<ProfileSet>> {
+    return request(`/api/profile-sets/`);
+  },
+  getProfileSet(id: number): Promise<ProfileSet> {
+    return request(`/api/profile-sets/${id}/`);
+  },
+  createProfileSet(data: ProfileSetInput): Promise<ProfileSet> {
+    return requestMultipart(`/api/profile-sets/`, "POST", data);
+  },
+  updateProfileSet(id: number, data: Partial<ProfileSetInput>): Promise<ProfileSet> {
+    return requestMultipart(`/api/profile-sets/${id}/`, "PATCH", data);
+  },
+  deleteProfileSet(id: number): Promise<void> {
+    return request(`/api/profile-sets/${id}/`, { method: "DELETE" });
   },
 };

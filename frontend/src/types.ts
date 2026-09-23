@@ -61,6 +61,25 @@ export interface UserJobFilter {
   updated_at: string;
 }
 
+export interface ProfileSet {
+  id: number;
+  name: string;
+  phone: string;
+  email: string;
+  resume: string;
+  github_url: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProfileSetInput {
+  name: string;
+  phone: string;
+  email: string;
+  resume: File | null;
+  github_url: string;
+}
+
 export interface JobNotification {
   id: number;
   job: Job;
