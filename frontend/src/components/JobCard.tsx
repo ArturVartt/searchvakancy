@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Job } from "../types";
+import type { ApplicationStatus, Job } from "../types";
 import { EMPLOYMENT_LABELS, EXPERIENCE_LABELS, formatDate, formatSalary } from "../lib/format";
 import { useAuth } from "../lib/AuthContext";
 import { api } from "../lib/api";
@@ -7,6 +7,8 @@ import { isJobViewed, isPostedWithinLastDay, markJobViewed } from "../lib/viewed
 import { sourceBadge } from "../lib/countryBadge";
 import { isTelegramSource } from "../lib/telegramSource";
 import { TelegramIcon } from "./TelegramIcon";
+import { ApplyModal } from "./ApplyModal";
+import { APPLICATION_STATUS_CLASSES, APPLICATION_STATUS_LABELS } from "../lib/applications";
 
 interface JobCardProps {
   job: Job;
@@ -18,6 +20,8 @@ export function JobCard({ job, onFavoriteChange, highlight }: JobCardProps) {
   const { isAuthenticated } = useAuth();
   const [pending, setPending] = useState(false);
   const [viewed, setViewed] = useState(() => isJobViewed(job.id));
+  const [applicationStatus, setApplicationStatus] = useState<ApplicationStatus | null>(job.application_status);
+  const [applyOpen, setApplyOpen] = useState(false);
   const isUnseenAndNew = !viewed && isPostedWithinLastDay(job.posted_at);
   const badge = sourceBadge(job.source);
   const isTG = isTelegramSource(job.source);
@@ -129,16 +133,35 @@ export function JobCard({ job, onFavoriteChange, highlight }: JobCardProps) {
             {job.posted_at ? ` · ${formatDate(job.posted_at)}` : ""}
           </span>
         </span>
-        <a
-          href={job.url}
-          target="_blank"
-          rel="noreferrer"
-          onClick={handleOpen}
-          className="shrink-0 rounded-md bg-[var(--color-accent)]/10 px-2 py-1 text-xs font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20 sm:bg-transparent sm:px-0 sm:py-0 sm:hover:bg-transparent sm:hover:text-[var(--color-accent-hover)]"
-        >
-          Открыть →
-        </a>
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+          {isAuthenticated && (
+            <button
+              type="button"
+              onClick={() => setApplyOpen(true)}
+              className={`rounded-md px-2 py-1 text-xs font-medium ${
+                applicationStatus
+                  ? APPLICATION_STATUS_CLASSES[applicationStatus]
+                  : "bg-[var(--color-accent)] text-[var(--color-accent-contrast)] hover:bg-[var(--color-accent-hover)]"
+              }`}
+            >
+              {applicationStatus ? `✓ ${APPLICATION_STATUS_LABELS[applicationStatus]}` : "Откликнуться"}
+            </button>
+          )}
+          <a
+            href={job.url}
+            target="_blank"
+            rel="noreferrer"
+            onClick={handleOpen}
+            className="rounded-md bg-[var(--color-accent)]/10 px-2 py-1 text-xs font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20 sm:bg-transparent sm:px-0 sm:py-0 sm:hover:bg-transparent sm:hover:text-[var(--color-accent-hover)]"
+          >
+            Открыть →
+          </a>
+        </div>
       </div>
+
+      {applyOpen && (
+        <ApplyModal job={job} onClose={() => setApplyOpen(false)} onSaved={setApplicationStatus} />
+      )}
     </article>
   );
 }

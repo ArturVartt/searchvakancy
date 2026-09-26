@@ -8,6 +8,8 @@ from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter
 from rest_framework.response import Response
 
+from apps.applications.models import Application
+
 from .filters import JobFilterSet, NullsLastOrderingFilter
 from .models import FavoriteJob, Job, JobNotification, JobSource, UserJobFilter
 from .serializers import (
@@ -61,6 +63,9 @@ class JobViewSet(viewsets.ReadOnlyModelViewSet):
         if request is not None and request.user.is_authenticated:
             context["favorite_job_ids"] = set(
                 FavoriteJob.objects.filter(user=request.user).values_list("job_id", flat=True)
+            )
+            context["application_statuses"] = dict(
+                Application.objects.filter(user=request.user).values_list("job_id", "status")
             )
         return context
 

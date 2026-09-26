@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from apps.applications.models import Application
+
 from .models import FavoriteJob, Job, JobNotification, JobSource, UserJobFilter
 
 
@@ -24,7 +26,26 @@ class _IsFavoritedMixin(serializers.Serializer):
         return FavoriteJob.objects.filter(user=request.user, job=obj).exists()
 
 
-class JobListSerializer(_IsFavoritedMixin, serializers.ModelSerializer):
+class _ApplicationStatusMixin(serializers.Serializer):
+    """Статус отклика текущего пользователя на вакансию (или null)."""
+
+    application_status = serializers.SerializerMethodField()
+
+    def get_application_status(self, obj: Job) -> str | None:
+        request = self.context.get("request")
+        if request is None or not request.user.is_authenticated:
+            return None
+        statuses = self.context.get("application_statuses")
+        if statuses is not None:
+            return statuses.get(obj.id)
+        return (
+            Application.objects.filter(user=request.user, job=obj)
+            .values_list("status", flat=True)
+            .first()
+        )
+
+
+class JobListSerializer(_IsFavoritedMixin, _ApplicationStatusMixin, serializers.ModelSerializer):
     source = serializers.CharField(source="source.name", read_only=True)
 
     class Meta:
@@ -44,10 +65,11 @@ class JobListSerializer(_IsFavoritedMixin, serializers.ModelSerializer):
             "url",
             "posted_at",
             "is_favorited",
+            "application_status",
         ]
 
 
-class JobDetailSerializer(_IsFavoritedMixin, serializers.ModelSerializer):
+class JobDetailSerializer(_IsFavoritedMixin, _ApplicationStatusMixin, serializers.ModelSerializer):
     source = JobSourceSerializer(read_only=True)
 
     class Meta:

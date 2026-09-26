@@ -27,6 +27,28 @@ export interface Job {
   url: string;
   posted_at: string | null;
   is_favorited: boolean;
+  application_status: ApplicationStatus | null;
+}
+
+export type ApplicationStatus = "saved" | "applied" | "interview" | "offer" | "rejected";
+
+export interface Application {
+  id: number;
+  job: Job;
+  status: ApplicationStatus;
+  profile_set: number | null;
+  profile_set_name: string | null;
+  note: string;
+  applied_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApplicationInput {
+  job_id: number;
+  status: ApplicationStatus;
+  profile_set: number | null;
+  note: string;
 }
 
 export interface JobDetail extends Omit<Job, "source"> {
@@ -68,6 +90,7 @@ export interface ProfileSet {
   email: string;
   resume: string;
   github_url: string;
+  cover_letter: string;
   created_at: string;
   updated_at: string;
 }
@@ -78,6 +101,7 @@ export interface ProfileSetInput {
   email: string;
   resume: File | null;
   github_url: string;
+  cover_letter: string;
 }
 
 export interface JobNotification {

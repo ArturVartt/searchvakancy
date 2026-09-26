@@ -1,4 +1,6 @@
 import type {
+  Application,
+  ApplicationInput,
   Job,
   JobDetail,
   JobFiltersQuery,
@@ -194,5 +196,23 @@ export const api = {
   },
   deleteProfileSet(id: number): Promise<void> {
     return request(`/api/profile-sets/${id}/`, { method: "DELETE" });
+  },
+
+  // --- отклики (нужен токен) ----------------------------------------------
+  listApplications(): Promise<Application[]> {
+    return request(`/api/applications/`);
+  },
+  getApplicationForJob(jobId: number): Promise<Application[]> {
+    return request(`/api/applications/?job=${jobId}`);
+  },
+  // Upsert по вакансии: повторный вызов обновляет существующий отклик.
+  saveApplication(data: ApplicationInput): Promise<Application> {
+    return request(`/api/applications/`, { method: "POST", body: JSON.stringify(data) });
+  },
+  updateApplication(id: number, data: Partial<Omit<ApplicationInput, "job_id">>): Promise<Application> {
+    return request(`/api/applications/${id}/`, { method: "PATCH", body: JSON.stringify(data) });
+  },
+  deleteApplication(id: number): Promise<void> {
+    return request(`/api/applications/${id}/`, { method: "DELETE" });
   },
 };

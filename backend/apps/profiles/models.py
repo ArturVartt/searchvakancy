@@ -42,6 +42,10 @@ class ProfileSet(models.Model):
         validators=[FileExtensionValidator(RESUME_EXTENSIONS), validate_resume_size],
     )
     github_url = models.URLField(blank=True)
+    cover_letter = models.TextField(
+        blank=True,
+        help_text="Шаблон сопроводительного письма. Подстановки: {компания}, {должность}",
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

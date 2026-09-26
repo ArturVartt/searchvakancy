@@ -87,9 +87,9 @@ export function Layout() {
           </div>
 
           {/* Второй ряд — сами ссылки навигации. overflow-x-auto — подстраховка
-              на очень узких экранах при большом числе пунктов (сейчас их 4
-              для авторизованных — Вакансии/Избранное/Уведомления/Сеты
-              профиля), а не основной механизм. */}
+              на очень узких экранах при большом числе пунктов (сейчас их 5
+              для авторизованных — Вакансии/Избранное/Отклики/Уведомления/
+              Сеты профиля), а не основной механизм. */}
           <nav className="-mx-4 mt-2 flex items-center gap-1 overflow-x-auto px-4 scrollbar-none">
             <NavLink to="/" end className={navLinkClass}>
               Вакансии
@@ -98,6 +98,9 @@ export function Layout() {
               <>
                 <NavLink to="/favorites" className={navLinkClass}>
                   Избранное
+                </NavLink>
+                <NavLink to="/applications" className={navLinkClass}>
+                  Отклики
                 </NavLink>
                 <NavLink to="/notifications" className={navLinkClass}>
                   Уведомления

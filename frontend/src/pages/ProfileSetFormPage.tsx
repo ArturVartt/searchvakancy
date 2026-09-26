@@ -11,6 +11,7 @@ export function ProfileSetFormPage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [githubUrl, setGithubUrl] = useState("");
+  const [coverLetter, setCoverLetter] = useState("");
   const [resume, setResume] = useState<File | null>(null);
   const [existingResumeUrl, setExistingResumeUrl] = useState<string | null>(null);
 
@@ -27,6 +28,7 @@ export function ProfileSetFormPage() {
         setPhone(set.phone);
         setEmail(set.email);
         setGithubUrl(set.github_url);
+        setCoverLetter(set.cover_letter);
         setExistingResumeUrl(set.resume);
       })
       .catch((e) => setError(e instanceof ApiError ? e.message : "Не удалось загрузить сет профиля"))
@@ -44,10 +46,18 @@ export function ProfileSetFormPage() {
           phone,
           email,
           github_url: githubUrl,
+          cover_letter: coverLetter,
           ...(resume ? { resume } : {}),
         });
       } else {
-        await api.createProfileSet({ name, phone, email, github_url: githubUrl, resume });
+        await api.createProfileSet({
+          name,
+          phone,
+          email,
+          github_url: githubUrl,
+          cover_letter: coverLetter,
+          resume,
+        });
       }
       navigate("/profile-sets");
     } catch (err) {
@@ -117,6 +127,22 @@ export function ProfileSetFormPage() {
             onChange={(e) => setGithubUrl(e.target.value)}
             className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--color-accent)]"
           />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">
+            Шаблон сопроводительного письма
+          </label>
+          <textarea
+            rows={6}
+            placeholder={"Здравствуйте! Меня заинтересовала вакансия «{должность}» в {компания}…"}
+            value={coverLetter}
+            onChange={(e) => setCoverLetter(e.target.value)}
+            className="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--color-accent)]"
+          />
+          <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+            Подстановки: {"{компания}"} и {"{должность}"} — заменятся при отклике на вакансию.
+          </p>
         </div>
 
         <div>

@@ -6,6 +6,7 @@ import { JobsPage } from "./pages/JobsPage";
 import { FavoritesPage } from "./pages/FavoritesPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
 import { LoginPage } from "./pages/LoginPage";
+import { ApplicationsPage } from "./pages/ApplicationsPage";
 import { ProfileSetsPage } from "./pages/ProfileSetsPage";
 import { ProfileSetFormPage } from "./pages/ProfileSetFormPage";
 
@@ -30,6 +31,14 @@ export function App() {
               element={
                 <RequireAuth>
                   <NotificationsPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="applications"
+              element={
+                <RequireAuth>
+                  <ApplicationsPage />
                 </RequireAuth>
               }
             />

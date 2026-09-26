@@ -13,6 +13,7 @@ class ProfileSetSerializer(serializers.ModelSerializer):
             "email",
             "resume",
             "github_url",
+            "cover_letter",
             "created_at",
             "updated_at",
         ]
